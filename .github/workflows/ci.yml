@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Build and start services
+        run: docker compose up --build -d
+
+      - name: Wait for services to be healthy
+        run: |
+          for i in {1..30}; do
+            if curl -s http://localhost:8080/health; then
+              echo "Service is healthy!"
+              exit 0
+            fi
+            echo "Waiting for service..."
+            sleep 2
+          done
+          echo "Service did not become healthy in time"
+          exit 1
+
+      - name: Apply database schema
+        run: |
+          docker exec -i $(docker compose ps -q db) psql -U loguser -d logdb < src/db/schema.sql
+          docker exec $(docker compose ps -q db) psql -U loguser -d logdb -c "SELECT create_hypertable('logs', 'timestamp');"
+
+      - name: Test ingestion endpoint
+        run: |
+          curl -f -X POST http://localhost:8080/logs \
+            -H "Content-Type: application/json" \
+            -d '{"logs": [{"timestamp": "2026-07-24T10:00:00Z", "level": "info", "service": "ci-test", "message": "CI test log"}]}'
+
+      - name: Test query endpoint
+        run: |
+          curl -f "http://localhost:8080/logs?service=ci-test"
+
+      - name: Show logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Tear down
+        if: always()
+        run: docker compose down -v
