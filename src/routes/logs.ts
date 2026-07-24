@@ -8,7 +8,11 @@ import {
 
 const router = Router();
 
-
+router.post("/retention/run", async (req, res) => {
+  const { runRetention } = await import("../services/retentionService.js");
+  const deleted = await runRetention();
+  res.json({ deleted });
+});
 router.post("/", createLogs);
 
 router.get("/", getLogs);
