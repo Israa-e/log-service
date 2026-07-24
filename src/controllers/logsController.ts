@@ -34,15 +34,14 @@ export async function getLogs(
 
         res.json(result);
 
-    } catch (error) {
+    } catch (error: any) {
 
-        res.status(500).json({
-            error: "internal server error"
+        res.status(400).json({
+            error: error.message
         });
 
     }
 }
-
 
 export async function aggregateLogs(
     req: Request,
