@@ -1,4 +1,16 @@
 services:
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      RETENTION_DAYS: 30
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+
   db:
     image: timescale/timescaledb:latest-pg16
     environment:
@@ -9,6 +21,11 @@ services:
       - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U loguser -d logdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
 volumes:
   pgdata:
