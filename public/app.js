@@ -67,6 +67,16 @@ function renderLogRow(log) {
   </div>`;
 }
 
+/* === Logout === */
+async function logout() {
+  try {
+    await fetch('/auth/logout', { method: 'POST' });
+  } catch (e) {
+    // continue even if request fails
+  }
+  window.location.href = '/login.html';
+}
+
 /* === Drawer === */
 function openDrawer(id) {
   const el = document.getElementById(id);

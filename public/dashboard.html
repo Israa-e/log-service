@@ -4,6 +4,7 @@
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Lumina — Dashboard</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="tailwind-config.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
@@ -31,7 +32,7 @@
     <div class="flex items-center gap-3">
       <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
       <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
-      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="window.location.href='/auth/logout'; window.location.href='/login.html'"><span class="material-symbols-outlined">logout</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="logout()"><span class="material-symbols-outlined">logout</span></button>
     </div>
   </header>
   <div class="p-6 flex-1 space-y-6 max-w-[1600px] mx-auto w-full">

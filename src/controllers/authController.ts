@@ -24,3 +24,11 @@ export function checkAuth(req: Request, res: Response, next: Function) {
   }
   res.redirect("/login.html");
 }
+
+export function sessionStatus(req: Request, res: Response) {
+  if ((req.session as any)?.authenticated) {
+    res.json({ authenticated: true });
+  } else {
+    res.status(401).json({ authenticated: false });
+  }
+}

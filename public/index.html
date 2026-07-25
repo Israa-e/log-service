@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <html>
-
 <head>
   <meta charset="UTF-8">
-  <meta http-equiv="refresh" content="0;url=/dashboard">
-  <title>Redirecting to Dashboard</title>
+  <title>Lumina</title>
 </head>
-
 <body>
-  <script>window.location.href = "/dashboard"</script>
+  <script>
+    fetch('/auth/session')
+      .then(r => { window.location.href = r.ok ? '/dashboard' : '/login.html'; })
+      .catch(() => { window.location.href = '/login.html'; });
+  </script>
 </body>
-
 </html>
