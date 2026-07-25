@@ -110,9 +110,9 @@ export async function queryLogs(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
-            conditions.push(`attributes ->> $${paramIndex} = $${paramIndex + 1}`);
-            values.push(attrKey, query[key]);
-            paramIndex += 2;
+            conditions.push(`attributes @> $${paramIndex}::jsonb`);
+            values.push(JSON.stringify({ [attrKey]: query[key] }));
+            paramIndex++;
         }
     }
 
