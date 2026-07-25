@@ -34,7 +34,8 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
     for (let index = 0; index < logs.length; index++) {
         const log = logs[index]!;
 
-        const time = new Date(log.timestamp);
+        const ts = log.timestamp || new Date().toISOString();
+        const time = new Date(ts);
         if (isNaN(time.getTime())) {
             rejected.push({ index, reason: "invalid timestamp" });
             continue;
@@ -74,7 +75,7 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
         }
 
         validRows.push([
-            log.timestamp,
+            ts,
             log.level,
             log.service,
             log.message,
