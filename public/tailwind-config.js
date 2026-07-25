@@ -3,17 +3,17 @@ tailwind.config = {
   theme: {
     extend: {
       colors: {
-        "on-error": "#690005", "error": "#ffb4ab", "error-container": "#93000a", "on-error-container": "#ffdad6",
-        "primary": "#adc6ff", "on-primary": "#002e6a", "primary-container": "#4d8eff", "on-primary-container": "#00285d",
-        "secondary": "#c0c1ff", "on-secondary": "#1000a9", "secondary-container": "#3131c0", "on-secondary-container": "#b0b2ff",
-        "tertiary": "#4edea3", "on-tertiary": "#003824", "tertiary-container": "#00a572", "on-tertiary-container": "#00311f",
-        "surface": "#051424", "surface-dim": "#051424", "surface-bright": "#2c3a4c",
-        "surface-container-lowest": "#010f1f", "surface-container-low": "#0d1c2d",
-        "surface-container": "#122131", "surface-container-high": "#1c2b3c", "surface-container-highest": "#273647",
-        "surface-variant": "#273647", "on-surface": "#d4e4fa", "on-surface-variant": "#c2c6d6",
-        "outline": "#8c909f", "outline-variant": "#424754",
-        "background": "#051424", "on-background": "#d4e4fa",
-        "inverse-surface": "#d4e4fa", "inverse-on-surface": "#233143", "inverse-primary": "#005ac2",
+        "on-error": "var(--on-error)", "error": "var(--error)", "error-container": "var(--error-container)", "on-error-container": "var(--on-error-container)",
+        "primary": "var(--primary)", "on-primary": "var(--on-primary)", "primary-container": "var(--primary-container)", "on-primary-container": "var(--on-primary-container)",
+        "secondary": "var(--secondary)", "on-secondary": "var(--on-secondary)", "secondary-container": "var(--secondary-container)", "on-secondary-container": "var(--on-secondary-container)",
+        "tertiary": "var(--tertiary)", "on-tertiary": "var(--on-tertiary)", "tertiary-container": "var(--tertiary-container)", "on-tertiary-container": "var(--on-tertiary-container)",
+        "surface": "var(--surface)", "surface-dim": "var(--surface-dim)", "surface-bright": "var(--surface-bright)",
+        "surface-container-lowest": "var(--surface-container-lowest)", "surface-container-low": "var(--surface-container-low)",
+        "surface-container": "var(--surface-container)", "surface-container-high": "var(--surface-container-high)", "surface-container-highest": "var(--surface-container-highest)",
+        "surface-variant": "var(--surface-variant)", "on-surface": "var(--on-surface)", "on-surface-variant": "var(--on-surface-variant)",
+        "outline": "var(--outline)", "outline-variant": "var(--outline-variant)",
+        "background": "var(--background)", "on-background": "var(--on-background)",
+        "inverse-surface": "var(--inverse-surface)", "inverse-on-surface": "var(--inverse-on-surface)", "inverse-primary": "var(--inverse-primary)",
         "orange-400": "#f59e0b"
       },
       spacing: {

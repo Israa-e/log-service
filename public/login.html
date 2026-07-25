@@ -5,33 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lumina Logs — Login</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="tailwind-config.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      darkMode: "class",
-      theme: {
-        extend: {
-          colors: {
-            primary: "#adc6ff", "primary-container": "#4d8eff",
-            surface: "#051424", "surface-container-low": "#0d1c2d",
-            "on-surface": "#d4e4fa", "on-surface-variant": "#c2c6d6",
-            "outline-variant": "#424754", error: "#ffb4ab"
-          }
-        }
-      }
-    }
-  </script>
+  <link rel="stylesheet" href="styles.css">
   <style>
     body { font-family: 'Inter', sans-serif; }
-    .glass-card { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
   </style>
 </head>
-<body class="bg-surface text-on-surface min-h-screen flex items-center justify-center p-4">
+<body class="bg-background text-on-surface min-h-screen flex items-center justify-center p-4">
   <div class="glass-card rounded-2xl p-10 w-full max-w-md space-y-8">
     <div class="text-center space-y-2">
       <div class="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center mx-auto">
-        <span class="material-symbols-outlined text-on-surface text-3xl" style="font-variation-settings:'FILL'1">monitoring</span>
+        <span class="material-symbols-outlined text-on-primary-container text-3xl" style="font-variation-settings:'FILL'1">monitoring</span>
       </div>
       <h1 class="text-3xl font-bold text-primary">Lumina Logs</h1>
       <p class="text-on-surface-variant text-sm">Observability Platform</p>
@@ -42,7 +28,7 @@
         <input id="password" type="password" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/50 focus:border-transparent outline-none transition-all" placeholder="Enter your password">
       </div>
       <p id="error" class="text-error text-sm hidden">Wrong password</p>
-      <button onclick="doLogin()" class="w-full py-3 bg-primary text-[#002e6a] font-bold rounded-xl hover:brightness-110 active:scale-[0.98] transition-all">Sign In</button>
+      <button onclick="doLogin()" class="w-full py-3 bg-primary text-on-primary font-bold rounded-xl hover:brightness-110 active:scale-[0.98] transition-all">Sign In</button>
     </div>
   </div>
   <script>

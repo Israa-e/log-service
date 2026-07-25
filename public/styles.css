@@ -1,3 +1,33 @@
+/* === Theme CSS Variables (Light) === */
+:root {
+  --on-error: #410003; --error: #ba1a1a; --error-container: #ffdad6; --on-error-container: #410003;
+  --primary: #005ac2; --on-primary: #ffffff; --primary-container: #d6e3ff; --on-primary-container: #001b3e;
+  --secondary: #5a5d72; --on-secondary: #ffffff; --secondary-container: #dee0f9; --on-secondary-container: #171a2c;
+  --tertiary: #006d47; --on-tertiary: #ffffff; --tertiary-container: #8af7b9; --on-tertiary-container: #002113;
+  --surface: #faf9fc; --surface-dim: #dad9dd; --surface-bright: #faf9fc;
+  --surface-container-lowest: #ffffff; --surface-container-low: #f4f3f6;
+  --surface-container: #eeeef0; --surface-container-high: #e8e8eb; --surface-container-highest: #e2e2e5;
+  --surface-variant: #e1e2ec; --on-surface: #1a1c20; --on-surface-variant: #43474e;
+  --outline: #73777f; --outline-variant: #c3c6cf;
+  --background: #faf9fc; --on-background: #1a1c20;
+  --inverse-surface: #2f3036; --inverse-on-surface: #f0f0f4; --inverse-primary: #adc6ff;
+}
+
+/* === Theme CSS Variables (Dark) === */
+.dark {
+  --on-error: #690005; --error: #ffb4ab; --error-container: #93000a; --on-error-container: #ffdad6;
+  --primary: #adc6ff; --on-primary: #002e6a; --primary-container: #4d8eff; --on-primary-container: #00285d;
+  --secondary: #c0c1ff; --on-secondary: #1000a9; --secondary-container: #3131c0; --on-secondary-container: #b0b2ff;
+  --tertiary: #4edea3; --on-tertiary: #003824; --tertiary-container: #00a572; --on-tertiary-container: #00311f;
+  --surface: #051424; --surface-dim: #051424; --surface-bright: #2c3a4c;
+  --surface-container-lowest: #010f1f; --surface-container-low: #0d1c2d;
+  --surface-container: #122131; --surface-container-high: #1c2b3c; --surface-container-highest: #273647;
+  --surface-variant: #273647; --on-surface: #d4e4fa; --on-surface-variant: #c2c6d6;
+  --outline: #8c909f; --outline-variant: #424754;
+  --background: #051424; --on-background: #d4e4fa;
+  --inverse-surface: #d4e4fa; --inverse-on-surface: #233143; --inverse-primary: #005ac2;
+}
+
 /* === Material Symbols === */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
@@ -5,19 +35,19 @@
 
 /* === Glass Card === */
 .glass-card {
-  background: rgba(30, 41, 59, 0.75);
+  background: color-mix(in srgb, var(--surface-container) 85%, transparent);
   backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);
 }
 
 /* === Custom Scrollbar === */
 .c-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
 .c-scroll::-webkit-scrollbar-track { background: transparent; }
-.c-scroll::-webkit-scrollbar-thumb { background: #424754; border-radius: 10px; }
+.c-scroll::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 10px; }
 
 .log-stream::-webkit-scrollbar { width: 4px; }
 .log-stream::-webkit-scrollbar-track { background: transparent; }
-.log-stream::-webkit-scrollbar-thumb { background: #424754; border-radius: 10px; }
+.log-stream::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 10px; }
 
 /* === Animations === */
 .pulse-soft {
@@ -36,10 +66,10 @@
 .animate-pulse-dot { animation: pulse-dot 2s infinite; }
 
 /* === Log Row Colors === */
-.log-row-error { border-left: 3px solid #ffb4ab; }
+.log-row-error { border-left: 3px solid var(--error); }
 .log-row-warn { border-left: 3px solid #f59e0b; }
-.log-row-info { border-left: 3px solid #adc6ff; }
-.log-row-debug { border-left: 3px solid #8c909f; }
+.log-row-info { border-left: 3px solid var(--primary); }
+.log-row-debug { border-left: 3px solid var(--outline); }
 
 /* === Drawer Transition === */
 .drawer-transition {
@@ -48,7 +78,7 @@
 
 /* === Shimmer === */
 .shimmer {
-  background: linear-gradient(90deg, transparent, rgba(173, 198, 255, 0.1), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 15%, transparent), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -58,5 +88,5 @@
 }
 
 /* === Tailwind Fallbacks (in case CDN is slow) === */
-html.dark { color-scheme: dark; }
-html.light { color-scheme: light; }
+.dark { color-scheme: dark; }
+:root { color-scheme: light; }
