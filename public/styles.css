@@ -1,0 +1,62 @@
+/* === Material Symbols === */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* === Glass Card === */
+.glass-card {
+  background: rgba(30, 41, 59, 0.75);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* === Custom Scrollbar === */
+.c-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
+.c-scroll::-webkit-scrollbar-track { background: transparent; }
+.c-scroll::-webkit-scrollbar-thumb { background: #424754; border-radius: 10px; }
+
+.log-stream::-webkit-scrollbar { width: 4px; }
+.log-stream::-webkit-scrollbar-track { background: transparent; }
+.log-stream::-webkit-scrollbar-thumb { background: #424754; border-radius: 10px; }
+
+/* === Animations === */
+.pulse-soft {
+  animation: pulse-soft 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+@keyframes pulse-soft {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.7; }
+}
+
+@keyframes pulse-dot {
+  0% { transform: scale(0.95); opacity: 0.5; }
+  50% { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(0.95); opacity: 0.5; }
+}
+.animate-pulse-dot { animation: pulse-dot 2s infinite; }
+
+/* === Log Row Colors === */
+.log-row-error { border-left: 3px solid #ffb4ab; }
+.log-row-warn { border-left: 3px solid #f59e0b; }
+.log-row-info { border-left: 3px solid #adc6ff; }
+.log-row-debug { border-left: 3px solid #8c909f; }
+
+/* === Drawer Transition === */
+.drawer-transition {
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* === Shimmer === */
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(173, 198, 255, 0.1), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* === Tailwind Fallbacks (in case CDN is slow) === */
+html.dark { color-scheme: dark; }
+html.light { color-scheme: light; }

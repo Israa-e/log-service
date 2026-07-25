@@ -5,8 +5,7 @@
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#adc6ff","primary-container":"#4d8eff",secondary:"#c0c1ff",tertiary:"#4edea3",error:"#ffb4ab",surface:"#051424","surface-container-low":"#0d1c2d","surface-container":"#122131","on-surface":"#d4e4fa","on-surface-variant":"#c2c6d6","outline-variant":"#424754","on-primary":"#002e6a","background":"#051424"}}}}}</script>
-<style>.material-symbols-outlined{font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}.glass-card{background:rgba(30,41,59,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}.c-scroll::-webkit-scrollbar{width:5px}.c-scroll::-webkit-scrollbar-thumb{background:#424754;border-radius:10px}</style></head>
+<link rel="stylesheet" href="styles.css"></head>
 <body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
 <aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
   <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
@@ -52,9 +51,9 @@
     </div>
   </div>
 </main>
+<script src="app.js"></script>
 <script>
-function toggleTheme(){const h=document.documentElement;h.classList.toggle('dark');h.classList.toggle('light');document.getElementById('theme-icon').textContent=h.classList.contains('dark')?'light_mode':'dark_mode';localStorage.setItem('lumina-theme',h.classList.contains('dark')?'dark':'light')}
-const saved=localStorage.getItem('lumina-theme');if(saved)document.documentElement.classList.toggle('dark',saved==='dark');
+initTheme();
 async function loadRetention() {
   const logEl=document.getElementById('retention-log');
   logEl.innerHTML='<tr><td class="px-4 py-3 text-xs text-on-surface-variant" colspan="2">Run retention to see results</td></tr>';
