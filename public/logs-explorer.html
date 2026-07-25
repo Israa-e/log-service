@@ -30,8 +30,6 @@
   <div class="px-6 py-3 glass-card mx-6 mt-3 rounded-xl">
     <ul class="flex flex-wrap items-center gap-3">
       <li class="flex items-center gap-2 text-xs uppercase text-on-surface-variant tracking-wider">Filters:</li>
-      <li><button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-svc').focus()">Service <span class="material-symbols-outlined text-sm">expand_more</span></button></li>
-      <li><button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-lvl').focus()">Level <span class="material-symbols-outlined text-sm">expand_more</span></button></li>
       <li><input id="f-svc" class="w-32 bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Service" onchange="loadLogs()" onkeyup="if(event.key==='Enter')loadLogs()"></li>
       <li><select id="f-lvl" class="bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" onchange="loadLogs()"><option value="">All Levels</option><option>debug</option><option>info</option><option>warn</option><option>error</option></select></li>
       <li><input id="f-q" class="flex-1 min-w-[200px] bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search message..." onkeyup="if(event.key==='Enter')loadLogs()"></li>
