@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { createNotification } from "./notificationService.js";
 const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "30", 10);
 const BATCH_SIZE = 1000;
 export async function runRetention() {
@@ -20,6 +21,7 @@ export async function runRetention() {
   }
 
   if (totalDeleted > 0) {
+    createNotification("retention", "Retention Run Complete", `Deleted ${totalDeleted} logs older than ${RETENTION_DAYS} days`);
     console.log(`Retention: deleted ${totalDeleted} old logs`);
   }
 

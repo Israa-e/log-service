@@ -55,8 +55,7 @@
       class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
       <h1 class="text-xl font-bold">Analytics</h1>
       <div class="flex items-center gap-3">
-        <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span
-            class="material-symbols-outlined">notifications</span></button>
+        <div class="relative" id="notif-btn"><button class="p-2 rounded-full text-on-surface-variant hover:text-primary relative" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-[10px] font-bold text-white rounded-full flex items-center justify-center hidden">0</span></button><div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20 bg-surface-container-high/50"><h3 class="text-sm font-semibold">Notifications</h3><button class="text-xs text-primary hover:underline" onclick="markAllNotifRead()">Mark all read</button></div><div class="max-h-80 overflow-y-auto c-scroll" id="notif-list"><div class="px-4 py-8 text-center text-on-surface-variant text-sm">Loading...</div></div></div></div>
         <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span
             class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
       </div>
@@ -110,7 +109,7 @@
   </main>
   <script src="app.js"></script>
   <script>
-    initTheme();
+    initTheme();setTimeout(loadNotifications,500);setInterval(loadNotifications,30000);
     const colors = { primary: '#adc6ff', secondary: '#c0c1ff', tertiary: '#4edea3', error: '#ffb4ab', gridLine: 'rgba(140,144,159,0.1)' };
     const cCfg = { backgroundColor: 'transparent', textStyle: { fontFamily: 'Inter', color: '#c2c6d6' }, tooltip: { backgroundColor: 'rgba(13,28,45,0.9)', borderColor: 'rgba(255,255,255,0.1)', textStyle: { color: '#d4e4fa' } } };
 

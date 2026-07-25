@@ -87,3 +87,61 @@ function closeDrawer(id) {
   const el = document.getElementById(id);
   if (el) el.classList.add('translate-x-full');
 }
+
+/* === Notifications === */
+async function loadNotifications() {
+  const data = await fetchJSON('/notifications');
+  const list = data?.notifications || [];
+  const badge = document.getElementById('notif-badge');
+  const container = document.getElementById('notif-list');
+  if (!container) return;
+  const unread = list.filter(n => !n.is_read);
+  if (badge) {
+    badge.textContent = unread.length;
+    badge.classList.toggle('hidden', unread.length === 0);
+  }
+  if (!list.length) {
+    container.innerHTML = '<div class="px-4 py-8 text-center text-on-surface-variant text-sm">No notifications</div>';
+    return;
+  }
+  container.innerHTML = list.map(n => {
+    const icons = { alert: 'notification_important', retention: 'storage', system: 'info' };
+    const icon = icons[n.type] || 'circle';
+    const time = new Date(n.created_at).toLocaleString();
+    return `<div class="px-4 py-3 border-b border-outline-variant/10 hover:bg-surface-container-highest/30 ${n.is_read ? 'opacity-60' : ''}">
+      <div class="flex items-start gap-3">
+        <span class="material-symbols-outlined text-sm mt-0.5 ${n.type === 'alert' ? 'text-error' : n.type === 'retention' ? 'text-tertiary' : 'text-primary'}">${icon}</span>
+        <div class="flex-1 min-w-0">
+          <div class="flex justify-between items-start gap-2">
+            <p class="text-sm font-medium truncate">${n.title}</p>
+            ${n.is_read ? '' : '<span class="w-2 h-2 rounded-full bg-primary shrink-0 mt-1.5"></span>'}
+          </div>
+          <p class="text-xs text-on-surface-variant mt-0.5 truncate">${n.message}</p>
+          <p class="text-[10px] text-on-surface-variant/60 mt-1">${time}</p>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleNotif() {
+  const panel = document.getElementById('notif-panel');
+  if (!panel) return;
+  panel.classList.toggle('hidden');
+  if (!panel.classList.contains('hidden')) loadNotifications();
+}
+
+document.addEventListener('click', function(e) {
+  const panel = document.getElementById('notif-panel');
+  const btn = document.getElementById('notif-btn');
+  if (panel && btn && !panel.contains(e.target) && !btn.contains(e.target)) {
+    panel.classList.add('hidden');
+  }
+});
+
+async function markAllNotifRead() {
+  await fetch('/notifications/read-all', { method: 'POST' });
+  loadNotifications();
+  const badge = document.getElementById('notif-badge');
+  if (badge) badge.classList.add('hidden');
+}

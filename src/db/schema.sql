@@ -16,3 +16,14 @@ CREATE TABLE IF NOT EXISTS alert_rules (
   webhook_url TEXT NOT NULL,
   last_triggered_at TIMESTAMPTZ
 );
+
+CREATE TABLE IF NOT EXISTS notifications (
+  id SERIAL PRIMARY KEY,
+  type TEXT NOT NULL,
+  title TEXT NOT NULL,
+  message TEXT NOT NULL,
+  service TEXT,
+  level TEXT,
+  is_read BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);

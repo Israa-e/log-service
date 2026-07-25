@@ -5,6 +5,7 @@ import logsRouter from "./routes/logs.js";
 import { startRetentionJob } from "./services/retentionService.js";
 import { startAlertJob } from "./services/alertService.js";
 import alertsRouter from "./routes/alerts.js";
+import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";
 import { checkAuth } from "./controllers/authController.js";
 
@@ -38,6 +39,7 @@ app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
 app.use("/auth", authRouter);
+app.use("/notifications", notificationsRouter);
 
 startRetentionJob();
 startAlertJob();

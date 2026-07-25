@@ -1,4 +1,5 @@
 import { pool } from "../db/index.js";
+import { createNotification } from "./notificationService.js";
 export async function checkAlerts() {
       const rules = await pool.query(`SELECT * FROM alert_rules`);
 
@@ -44,6 +45,7 @@ export async function checkAlerts() {
           rule.id,
         ]);
 
+        createNotification("alert", `Alert: ${rule.service || "all"}`, `${errorCount} errors in ${rule.window_minutes} min (threshold: ${rule.threshold})`, rule.service, "error");
         console.log(`Alert triggered for rule ${rule.id}: ${errorCount} errors`);
       } catch (err) {
         console.error(`Failed to send webhook for rule ${rule.id}:`, err);
