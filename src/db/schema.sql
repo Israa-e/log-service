@@ -7,3 +7,12 @@ CREATE TABLE IF NOT EXISTS logs (
   attributes JSONB,
   PRIMARY KEY (id, timestamp)
 );
+
+CREATE TABLE IF NOT EXISTS alert_rules (
+  id SERIAL PRIMARY KEY,
+  service TEXT,
+  threshold INT NOT NULL,
+  window_minutes INT NOT NULL,
+  webhook_url TEXT NOT NULL,
+  last_triggered_at TIMESTAMPTZ
+);

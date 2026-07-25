@@ -2,10 +2,13 @@ import express from "express";
 import healthRouter from "./routes/health.js";
 import logsRouter from "./routes/logs.js";
 import { startRetentionJob } from "./services/retentionService.js";
-
+import { startAlertJob } from "./services/alertService.js";
+import alertsRouter from "./routes/alerts.js";
 const app = express();
 app.use(express.json());
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
+app.use("/alerts", alertsRouter);
 startRetentionJob();
+startAlertJob();
 export default app;
