@@ -66,6 +66,27 @@
     </section>
   </div>
 </main>
+<button class="fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full bg-primary text-on-primary shadow-lg hover:brightness-110 transition-all hover:scale-105 flex items-center justify-center" onclick="document.getElementById('ingest-modal').classList.remove('hidden')"><span class="material-symbols-outlined text-2xl" style="font-variation-settings:'FILL'1">add</span></button>
+<div id="ingest-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm hidden" onclick="if(event.target===this)this.classList.add('hidden')">
+  <div class="bg-surface-container-low border border-outline-variant/30 rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden" onclick="event.stopPropagation()">
+    <div class="flex items-center justify-between px-6 py-4 border-b border-outline-variant/20">
+      <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">add_circle</span><h3 class="font-semibold">Quick Ingest</h3></div>
+      <button class="p-1 hover:bg-surface-container-highest rounded-full" onclick="document.getElementById('ingest-modal').classList.add('hidden')"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="p-6 space-y-4">
+      <div class="grid grid-cols-2 gap-4">
+        <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Service</label><input id="dash-ingest-service" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="e.g. checkout"></div>
+        <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Level</label><select id="dash-ingest-level" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"><option value="info">info</option><option value="debug">debug</option><option value="warn">warn</option><option value="error">error</option></select></div>
+      </div>
+      <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Message</label><input id="dash-ingest-message" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Log message"></div>
+      <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Attributes <span class="text-on-surface-variant/60 normal-case">(optional JSON)</span></label><input id="dash-ingest-attributes" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary/50 outline-none" placeholder='{"userId":"abc","region":"us"}'></div>
+      <div class="flex items-center gap-3 pt-2">
+        <button class="px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110 flex items-center gap-2" onclick="dashIngestLog()"><span class="material-symbols-outlined text-sm">send</span>Send</button>
+        <span id="dash-ingest-result" class="text-xs text-on-surface-variant"></span>
+      </div>
+    </div>
+  </div>
+</div>
 <script src="app.js"></script>
 <script>
 initTheme();
@@ -145,6 +166,22 @@ async function loadClusterHealth() {
     }).join('')}</div>
     <div class="h-32 bg-surface-container-lowest/30 rounded-xl flex items-center justify-center border border-dashed border-outline-variant/50"><div class="text-center"><p class="text-xs text-on-surface-variant">Last 1 hour</p><p class="text-sm font-semibold text-primary mt-1">${buckets.reduce((a,b) => a + b.count, 0)} events</p></div></div>
   ` : '<div class="text-center text-on-surface-variant text-sm flex-1 flex items-center justify-center">No service data yet</div>';
+}
+async function dashIngestLog() {
+  const svc=document.getElementById('dash-ingest-service').value.trim();
+  const lvl=document.getElementById('dash-ingest-level').value;
+  const msg=document.getElementById('dash-ingest-message').value.trim();
+  const attrs=document.getElementById('dash-ingest-attributes').value.trim();
+  const result=document.getElementById('dash-ingest-result');
+  if(!svc||!msg){result.textContent='Service and Message are required';result.style.color='#ffb4ab';return}
+  let attributes;
+  if(attrs){try{attributes=JSON.parse(attrs)}catch(e){result.textContent='Invalid JSON in Attributes';result.style.color='#ffb4ab';return}}
+  try {
+    const res=await fetch('/logs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:[{service:svc,level:lvl,message:msg,attributes}]})});
+    const data=await res.json();
+    if(data.accepted>0){result.textContent=`Accepted: ${data.accepted} log(s)`;result.style.color='#4edea3';document.getElementById('dash-ingest-service').value='';document.getElementById('dash-ingest-message').value='';document.getElementById('dash-ingest-attributes').value='';document.getElementById('ingest-modal').classList.add('hidden');loadMetrics();loadLiveLogs()}
+    else{result.textContent=`Rejected: ${data.rejected?.[0]?.reason||'error'}`;result.style.color='#ffb4ab'}
+  }catch(e){result.textContent='Network error';result.style.color='#ffb4ab'}
 }
 loadMetrics(); loadLiveLogs(); loadClusterHealth();
 setInterval(loadMetrics, 10000);

@@ -28,6 +28,25 @@
     </div>
   </header>
   <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div class="glass-card rounded-xl overflow-hidden">
+      <button class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-highest/20 transition-colors" onclick="this.parentElement.classList.toggle('collapsed');this.querySelector('.arrow').classList.toggle('-rotate-180')">
+        <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">add_circle</span><h3 class="font-semibold">Manual Ingest</h3></div>
+        <span class="material-symbols-outlined arrow transition-transform duration-200">expand_less</span>
+      </button>
+      <div class="px-6 pb-5 space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Service</label><input id="ingest-service" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="e.g. checkout"></div>
+          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Level</label><select id="ingest-level" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"><option value="info">info</option><option value="debug">debug</option><option value="warn">warn</option><option value="error">error</option></select></div>
+          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Message</label><input id="ingest-message" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Log message"></div>
+        </div>
+        <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Attributes <span class="text-on-surface-variant/60 normal-case">(optional JSON)</span></label><input id="ingest-attributes" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary/50 outline-none" placeholder='{"userId":"abc","region":"us"}'></div>
+        <div class="flex items-center gap-3">
+          <button class="px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110 flex items-center gap-2" onclick="ingestLog()"><span class="material-symbols-outlined text-sm">send</span>Send</button>
+          <span id="ingest-result" class="text-xs text-on-surface-variant"></span>
+        </div>
+      </div>
+    </div>
+    <style>.glass-card.collapsed .arrow{-webkit-transform:rotate(180deg)}.glass-card.collapsed>div:not(:first-child){display:none}</style>
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
       <div class="glass-card p-5 rounded-xl space-y-2">
         <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Current Rate</p><span class="material-symbols-outlined text-primary text-sm">trending_up</span></div>
@@ -98,6 +117,22 @@ async function loadIngestion() {
     c.setOption({backgroundColor:'transparent',textStyle:{fontFamily:'Inter',color:'#c2c6d6'},grid:{left:40,right:20,top:20,bottom:40},xAxis:{type:'category',data:buckets.map(b=>new Date(b.start).toLocaleTimeString()),axisLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},series:[{type:'line',smooth:true,symbol:'none',data:buckets.map(b=>b.count),lineStyle:{color:'#adc6ff',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(173,198,255,0.3)'},{offset:1,color:'rgba(173,198,255,0)'}])},markLine:{data:[{type:'average',name:'Avg'}],lineStyle:{color:'#4edea3',type:'dashed'}}}],tooltip:{trigger:'axis'}});
     window.addEventListener('resize',()=>c.resize());
   }
+}
+async function ingestLog() {
+  const svc=document.getElementById('ingest-service').value.trim();
+  const lvl=document.getElementById('ingest-level').value;
+  const msg=document.getElementById('ingest-message').value.trim();
+  const attrs=document.getElementById('ingest-attributes').value.trim();
+  const result=document.getElementById('ingest-result');
+  if(!svc||!msg){result.textContent='Service and Message are required';result.style.color='#ffb4ab';return}
+  let attributes;
+  if(attrs){try{attributes=JSON.parse(attrs)}catch(e){result.textContent='Invalid JSON in Attributes';result.style.color='#ffb4ab';return}}
+  try {
+    const res=await fetch('/logs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:[{service:svc,level:lvl,message:msg,attributes}]})});
+    const data=await res.json();
+    if(data.accepted>0){result.textContent=`Accepted: ${data.accepted} log(s)`;result.style.color='#4edea3';document.getElementById('ingest-service').value='';document.getElementById('ingest-message').value='';document.getElementById('ingest-attributes').value='';loadIngestion()}
+    else{result.textContent=`Rejected: ${data.rejected?.[0]?.reason||'error'}`;result.style.color='#ffb4ab'}
+  }catch(e){result.textContent='Network error';result.style.color='#ffb4ab'}
 }
 loadIngestion();setInterval(loadIngestion,10000);
 </script>
