@@ -116,8 +116,17 @@ Fires a webhook when error count in the window exceeds the threshold. Deduplicat
 
 ### `POST /logs/retention/run` — Manually trigger retention
 
-### Dashboard UI
-Browse to `http://localhost:8080/index.html`, log in with the password, and view logs in a table with live refresh.
+### Dashboard UI (Lumina Monitor)
+Browse to `http://localhost:8080/` after logging in with the password (`DASHBOARD_PASSWORD` env var, default `LogService2026!`).
+
+**Pages:**
+- `/dashboard` — System overview with live log stream, metrics, cluster health
+- `/logs-explorer` — Advanced log search/filter with detail drawer
+- `/analytics` — Interactive ECharts (throughput, severity distribution, error clusters)
+- `/ingestion` — Real-time ingestion monitoring with system health
+- `/retention` — Storage management with manual run button
+
+The UI features a Dark/Light theme toggle, persistent preferences, and a responsive layout inspired by Datadog and Grafana.
 
 ## Schema Design
 

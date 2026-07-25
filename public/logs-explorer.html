@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina — Logs Explorer</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#adc6ff","primary-container":"#4d8eff",secondary:"#c0c1ff",tertiary:"#4edea3",error:"#ffb4ab",surface:"#051424","surface-container-low":"#0d1c2d","surface-container":"#122131","surface-container-high":"#1c2b3c","surface-container-highest":"#273647","on-surface":"#d4e4fa","on-surface-variant":"#c2c6d6","outline":"#8c909f","outline-variant":"#424754","on-primary":"#002e6a","on-error":"#690005","background":"#051424","surface-dim":"#051424","surface-bright":"#2c3a4c"}}}}}</script>
+<style>.material-symbols-outlined{font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}.glass-card{background:rgba(30,41,59,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}.c-scroll::-webkit-scrollbar{width:5px}.c-scroll::-webkit-scrollbar-thumb{background:#424754;border-radius:10px}.log-row-error{border-left:3px solid #ffb4ab}.log-row-warn{border-left:3px solid #f59e0b}.log-row-info{border-left:3px solid #adc6ff}.log-row-debug{border-left:3px solid #8c909f}</style></head>
+<body class="bg-background text-on-surface font-sans h-screen flex overflow-hidden">
+<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
+  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
+  <nav class="flex-1 space-y-1">
+    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
+    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
+  </nav>
+  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
+</aside>
+<main class="ml-64 flex-1 flex flex-col h-screen">
+  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
+    <h1 class="text-xl font-bold">Logs Explorer</h1>
+    <div class="flex items-center gap-3">
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+    </div>
+  </header>
+  <div class="px-6 py-3 glass-card flex flex-wrap items-center gap-3 mx-6 mt-3 rounded-xl">
+    <div class="flex items-center gap-2 text-xs uppercase text-on-surface-variant tracking-wider">Filters:</div>
+    <button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-svc').focus()">Service <span class="material-symbols-outlined text-sm">expand_more</span></button>
+    <button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-lvl').focus()">Level <span class="material-symbols-outlined text-sm">expand_more</span></button>
+    <input id="f-svc" class="w-32 bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Service" onchange="loadLogs()">
+    <select id="f-lvl" class="bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" onchange="loadLogs()"><option value="">All Levels</option><option>debug</option><option>info</option><option>warn</option><option>error</option></select>
+    <input id="f-q" class="flex-1 min-w-[200px] bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search message..." onkeyup="if(event.key==='Enter')loadLogs()">
+    <button class="flex items-center gap-1 px-4 py-1.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110" onclick="loadLogs()"><span class="material-symbols-outlined text-sm">search</span>Search</button>
+    <span class="text-xs text-on-surface-variant ml-auto" id="result-count"></span>
+  </div>
+  <div class="flex-1 overflow-hidden flex flex-col mx-6 my-3 rounded-xl glass-card">
+    <div class="px-6 py-2 grid grid-cols-12 gap-3 border-b border-outline-variant/20 bg-surface-container-low text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
+      <div class="col-span-2">Timestamp</div><div class="col-span-2">Service</div><div class="col-span-1">Level</div><div class="col-span-5">Message</div><div class="col-span-2 text-right">Attributes</div>
+    </div>
+    <div class="flex-1 overflow-y-auto c-scroll" id="log-container">
+      <div class="flex items-center justify-center h-full text-on-surface-variant text-sm">Loading logs...</div>
+    </div>
+  </div>
+</main>
+<div class="fixed right-0 top-0 h-screen w-[480px] bg-surface-container-low border-l border-outline-variant/30 shadow-2xl z-50 translate-x-full transition-transform duration-300 flex flex-col" id="details-drawer">
+  <div class="p-5 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-high/50">
+    <div class="flex items-center gap-3"><span class="px-2 py-1 rounded-md text-xs font-bold uppercase" id="dd-level">ERROR</span><h3 class="font-semibold">Log Details</h3></div>
+    <button class="p-1 hover:bg-surface-container-highest rounded-full" onclick="closeDetails()"><span class="material-symbols-outlined">close</span></button>
+  </div>
+  <div class="flex-1 overflow-y-auto c-scroll p-5 space-y-6" id="dd-body"></div>
+  <div class="p-4 border-t border-outline-variant/20 bg-surface-container-high/50 flex gap-3">
+    <button class="flex-1 py-2.5 bg-primary text-on-primary font-bold rounded-lg hover:brightness-110" onclick="closeDetails()">Close</button>
+  </div>
+</div>
+<script>
+function toggleTheme() { const h=document.documentElement;h.classList.toggle('dark');h.classList.toggle('light');document.getElementById('theme-icon').textContent=h.classList.contains('dark')?'light_mode':'dark_mode';localStorage.setItem('lumina-theme',h.classList.contains('dark')?'dark':'light')}
+const saved=localStorage.getItem('lumina-theme');if(saved)document.documentElement.classList.toggle('dark',saved==='dark');
+async function fetchJSON(u){try{const r=await fetch(u);if(!r.ok)return null;return await r.json()}catch{return null}}
+let currentLogs=[];
+
+async function loadLogs() {
+  const svc=document.getElementById('f-svc').value;
+  const lvl=document.getElementById('f-lvl').value;
+  const q=document.getElementById('f-q').value;
+  const p=new URLSearchParams({limit:'50'});
+  if(svc)p.set('service',svc);if(lvl)p.set('level',lvl);if(q)p.set('q',q);
+  const data=await fetchJSON(`/logs?${p}`);
+  currentLogs=data?.logs||[];
+  document.getElementById('result-count').textContent=`${currentLogs.length} results`;
+  const c=document.getElementById('log-container');c.innerHTML='';
+  if(!currentLogs.length){c.innerHTML='<div class="flex items-center justify-center h-full text-on-surface-variant text-sm">No logs found</div>';return}
+  currentLogs.forEach((log,i)=>{
+    const d=document.createElement('div');
+    const rc=`log-row-${log.level}`;
+    const lc={error:'bg-error/10 text-error border-error/30',warn:'bg-orange-400/10 text-orange-400 border-orange-400/30',info:'bg-primary/10 text-primary border-primary/30',debug:'bg-outline/10 text-outline border-outline/30'};
+    d.className=`px-6 py-2 grid grid-cols-12 gap-3 items-center border-b border-outline-variant/10 hover:bg-surface-container-highest/30 cursor-pointer transition-colors ${rc}`;
+    d.onclick=()=>openDetails(i);
+    d.innerHTML=`<div class="col-span-2 font-mono text-xs text-on-surface-variant/80">${new Date(log.timestamp).toLocaleString()}</div>
+<div class="col-span-2"><span class="px-2 py-0.5 bg-surface-container-highest rounded text-xs">${log.service}</span></div>
+<div class="col-span-1"><span class="px-2 py-0.5 ${lc[log.level]||lc.info} border rounded-full text-[10px] font-bold uppercase">${log.level}</span></div>
+<div class="col-span-5 font-mono text-xs truncate">${log.message}</div>
+<div class="col-span-2 text-right font-mono text-xs text-on-surface-variant truncate">${log.attributes?Object.keys(log.attributes).slice(0,2).join(', ')+(Object.keys(log.attributes).length>2?', ...':''):'—'}</div>`;
+    c.appendChild(d);
+  });
+}
+function openDetails(i) {
+  const log=currentLogs[i];if(!log)return;
+  const lc={error:'bg-error/10 text-error',warn:'bg-orange-400/10 text-orange-400',info:'bg-primary/10 text-primary',debug:'bg-outline/10 text-outline'};
+  document.getElementById('dd-level').className=`px-2 py-1 rounded-md text-xs font-bold uppercase ${lc[log.level]||lc.info}`;
+  document.getElementById('dd-level').textContent=log.level;
+  document.getElementById('dd-body').innerHTML=`
+    <section><h4 class="text-xs text-primary uppercase tracking-wider mb-3 font-semibold">Summary</h4>
+      <div class="space-y-2 text-sm">${['Timestamp','Service','Message'].map(f=>`<div class="flex justify-between"><span class="text-on-surface-variant">${f}</span><span class="font-mono text-xs">${f==='Timestamp'?new Date(log.timestamp).toLocaleString():log[f.toLowerCase()]}</span></div>`).join('')}</div></section>
+    <section><h4 class="text-xs text-primary uppercase tracking-wider mb-3 font-semibold">Attributes</h4>
+      <pre class="p-4 bg-[#010f1f] rounded-lg font-mono text-xs border border-outline-variant/20 overflow-x-auto">${log.attributes?JSON.stringify(log.attributes,null,2):'null'}</pre>
+      <button class="mt-2 text-xs text-primary hover:underline" onclick="navigator.clipboard.writeText(JSON.stringify(${JSON.stringify(JSON.stringify(log.attributes))},null,2))">Copy JSON</button></section>`;
+  document.getElementById('details-drawer').classList.remove('translate-x-full');
+}
+function closeDetails(){document.getElementById('details-drawer').classList.add('translate-x-full')}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetails()});
+loadLogs();setInterval(loadLogs,10000);
+</script>
+</body></html>

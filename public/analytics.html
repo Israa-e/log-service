@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina — Analytics</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#adc6ff","primary-container":"#4d8eff",secondary:"#c0c1ff",tertiary:"#4edea3",error:"#ffb4ab",surface:"#051424","surface-container-low":"#0d1c2d","surface-container":"#122131","on-surface":"#d4e4fa","on-surface-variant":"#c2c6d6","outline-variant":"#424754","background":"#051424"}}}}}</script>
+<style>.material-symbols-outlined{font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}.glass-card{background:rgba(30,41,59,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}.c-scroll::-webkit-scrollbar{width:5px}.c-scroll::-webkit-scrollbar-thumb{background:#424754;border-radius:10px}</style></head>
+<body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
+<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
+  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
+  <nav class="flex-1 space-y-1">
+    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
+    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
+  </nav>
+  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
+</aside>
+<main class="ml-64 flex-1 flex flex-col h-screen">
+  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
+    <h1 class="text-xl font-bold">Analytics</h1>
+    <div class="flex items-center gap-3">
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+    </div>
+  </header>
+  <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="quick-stats"></div>
+    <div class="grid grid-cols-12 gap-6">
+      <div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-6 h-[400px] flex flex-col"><div class="flex justify-between items-center mb-4"><div><h3 class="font-semibold">Ingestion Throughput</h3><p class="text-xs text-on-surface-variant">Logs per minute across all services</p></div></div><div class="flex-1 w-full" id="chart-throughput"></div></div>
+      <div class="col-span-12 lg:col-span-4 glass-card rounded-xl p-6 h-[400px] flex flex-col"><h3 class="font-semibold mb-4">Severity Distribution</h3><div class="flex-1 w-full" id="chart-distribution"></div></div>
+    </div>
+    <div class="grid grid-cols-12 gap-6">
+      <div class="col-span-12 lg:col-span-6 glass-card rounded-xl p-6 h-[350px] flex flex-col"><h3 class="font-semibold mb-4">Top Error Clusters</h3><div class="flex-1 w-full" id="chart-errors"></div></div>
+      <div class="col-span-12 lg:col-span-6 glass-card rounded-xl p-6 h-[350px] flex flex-col"><h3 class="font-semibold mb-4">Services Comparison</h3><div class="flex-1 w-full" id="chart-services"></div></div>
+    </div>
+    <div class="glass-card rounded-xl overflow-hidden">
+      <div class="p-5 border-b border-outline-variant/20 flex justify-between items-center"><h3 class="font-semibold">Recent Anomalies</h3></div>
+      <div class="overflow-x-auto"><table class="w-full text-left"><thead class="bg-surface-container-low/50"><tr class="text-xs text-on-surface-variant uppercase tracking-wider"><th class="px-5 py-3">Timestamp</th><th class="px-5 py-3">Service</th><th class="px-5 py-3">Type</th><th class="px-5 py-3">Detail</th></tr></thead><tbody class="divide-y divide-outline-variant/10" id="anomaly-table"></tbody></table></div>
+    </div>
+  </div>
+</main>
+<script>
+function toggleTheme(){const h=document.documentElement;h.classList.toggle('dark');h.classList.toggle('light');document.getElementById('theme-icon').textContent=h.classList.contains('dark')?'light_mode':'dark_mode';localStorage.setItem('lumina-theme',h.classList.contains('dark')?'dark':'light')}
+const saved=localStorage.getItem('lumina-theme');if(saved)document.documentElement.classList.toggle('dark',saved==='dark');
+async function fetchJSON(u){try{const r=await fetch(u);if(!r.ok)return null;return await r.json()}catch{return null}}
+const colors={primary:'#adc6ff',secondary:'#c0c1ff',tertiary:'#4edea3',error:'#ffb4ab',gridLine:'rgba(140,144,159,0.1)'};
+const cCfg={backgroundColor:'transparent',textStyle:{fontFamily:'Inter',color:'#c2c6d6'},tooltip:{backgroundColor:'rgba(13,28,45,0.9)',borderColor:'rgba(255,255,255,0.1)',textStyle:{color:'#d4e4fa'}}};
+
+async function loadCharts() {
+  const until = new Date().toISOString();
+  const since1h = new Date(Date.now() - 3600000).toISOString();
+  const since24h = new Date(Date.now() - 86400000).toISOString();
+  const [agg, dist, errAgg, svcAgg] = await Promise.all([
+    fetchJSON(`/logs/aggregate?since=${since1h}&until=${until}&bucket=1m`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=level`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&level=error&group_by=service`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=service`)
+  ]);
+  const total = agg?.buckets?.reduce((s,b)=>s+b.count,0)||0;
+  const errTotal = errAgg?.buckets?.reduce((s,b)=>s+b.count,0)||0;
+  const svcCount = svcAgg?.buckets?.[...new Set(svcAgg.buckets.map(b=>b.group))].length||0;
+  document.getElementById('quick-stats').innerHTML=`
+    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">LOGS (1H)</p><h3 class="text-2xl font-bold mt-1">${total}</h3></div>
+    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">ERROR RATE</p><h3 class="text-2xl font-bold mt-1">${total?((errTotal/total)*100).toFixed(2):'0'}%</h3></div>
+    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">SERVICES</p><h3 class="text-2xl font-bold mt-1">${svcCount}</h3></div>
+    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">AVG THROUGHPUT</p><h3 class="text-2xl font-bold mt-1">${total?Math.round(total/60):'0'}/s</h3></div>`;
+  if (agg?.buckets) {
+    const c1=echarts.init(document.getElementById('chart-throughput'));
+    c1.setOption({...cCfg,grid:{left:40,right:20,top:20,bottom:40},xAxis:{type:'category',data:agg.buckets.map(b=>new Date(b.start).toLocaleTimeString()),axisLine:{lineStyle:{color:colors.gridLine}}},yAxis:{type:'value',splitLine:{lineStyle:{color:colors.gridLine}}},series:[{type:'line',smooth:true,symbol:'none',data:agg.buckets.map(b=>b.count),lineStyle:{color:colors.primary,width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(173,198,255,0.3)'},{offset:1,color:'rgba(173,198,255,0)'}])}}],tooltip:{trigger:'axis'}});
+    window.addEventListener('resize',()=>c1.resize());
+  }
+  if (dist?.buckets) {
+    const lvlMap={debug:colors.secondary,info:colors.tertiary,warn:colors.primary,error:colors.error};
+    const grps={};dist.buckets.forEach(b=>{grps[b.group||'info']=(grps[b.group||'info']||0)+b.count});
+    const c2=echarts.init(document.getElementById('chart-distribution'));
+    c2.setOption({...cCfg,series:[{type:'pie',radius:['60%','85%'],itemStyle:{borderRadius:4},label:{show:false},data:Object.entries(grps).map(([k,v])=>({value:v,name:k,itemStyle:{color:lvlMap[k]||colors.primary}}))}],tooltip:{trigger:'item'}});
+    window.addEventListener('resize',()=>c2.resize());
+  }
+  if (errAgg?.buckets) {
+    const grps={};errAgg.buckets.forEach(b=>{grps[b.group||'unknown']=(grps[b.group||'unknown']||0)+b.count});
+    const sorted=Object.entries(grps).sort((a,b)=>b[1]-a[1]).slice(0,8);
+    const c3=echarts.init(document.getElementById('chart-errors'));
+    c3.setOption({...cCfg,grid:{left:80,right:20,top:10,bottom:20},xAxis:{type:'value',splitLine:{show:false},axisLabel:{show:false}},yAxis:{type:'category',data:sorted.map(([k])=>k),axisLine:{show:false},axisTick:{show:false}},series:[{type:'bar',data:sorted.map(([,v])=>v),itemStyle:{color:new echarts.graphic.LinearGradient(1,0,0,0,[{offset:0,color:colors.error},{offset:1,color:'rgba(255,180,171,0.2)'}]),borderRadius:[0,4,4,0]}}],tooltip:{trigger:'item'}});
+    window.addEventListener('resize',()=>c3.resize());
+  }
+  if (svcAgg?.buckets) {
+    const grps={};svcAgg.buckets.forEach(b=>{grps[b.group||'unknown']=(grps[b.group||'unknown']||0)+b.count});
+    const entries=Object.entries(grps);
+    const c4=echarts.init(document.getElementById('chart-services'));
+    c4.setOption({...cCfg,grid:{left:40,right:20,top:10,bottom:40},xAxis:{type:'category',data:entries.map(([k])=>k),axisLabel:{rotate:20},axisLine:{lineStyle:{color:colors.gridLine}}},yAxis:{type:'value',splitLine:{lineStyle:{color:colors.gridLine}}},series:[{type:'bar',data:entries.map(([,v])=>v),itemStyle:{color:colors.secondary,borderRadius:[4,4,0,0]}}],tooltip:{trigger:'item'}});
+    window.addEventListener('resize',()=>c4.resize());
+  }
+  const anomalies = document.getElementById('anomaly-table');
+  anomalies.innerHTML = (errAgg?.buckets?.filter(b=>b.count>0).slice(0,3)||[]).map(b=>`
+    <tr class="hover:bg-primary-container/5 transition-colors"><td class="px-5 py-3 font-mono text-xs">${new Date(b.start).toLocaleTimeString()}</td><td class="px-5 py-3 text-sm font-semibold">${b.group||'—'}</td><td class="px-5 py-3"><span class="px-2 py-0.5 rounded bg-error/10 text-error text-[10px] uppercase font-bold">Spike</span></td><td class="px-5 py-3 text-xs text-on-surface-variant">${b.count} events</td></tr>
+  `).join('')||'<tr><td class="px-5 py-3 text-sm text-on-surface-variant" colspan="4">No anomalies detected</td></tr>';
+}
+loadCharts();setInterval(loadCharts,15000);
+</script>
+</body></html>

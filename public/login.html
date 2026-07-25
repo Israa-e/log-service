@@ -1,88 +1,61 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html class="dark" lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Login — Log Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumina — Login</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: "class",
+      theme: {
+        extend: {
+          colors: {
+            primary: "#adc6ff", "primary-container": "#4d8eff",
+            surface: "#051424", "surface-container-low": "#0d1c2d",
+            "on-surface": "#d4e4fa", "on-surface-variant": "#c2c6d6",
+            "outline-variant": "#424754", error: "#ffb4ab"
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body {
-      font-family: system-ui, sans-serif;
-      background: #0f172a;
-      color: #e2e8f0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      margin: 0;
-    }
-    .login-box {
-      background: #1e293b;
-      padding: 40px;
-      border-radius: 8px;
-      width: 300px;
-      text-align: center;
-    }
-    h1 {
-      font-size: 20px;
-      margin-bottom: 20px;
-    }
-    input {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 12px;
-      border-radius: 4px;
-      border: 1px solid #334155;
-      background: #0f172a;
-      color: #e2e8f0;
-      box-sizing: border-box;
-    }
-    button {
-      width: 100%;
-      padding: 10px;
-      background: #3b82f6;
-      color: white;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      font-size: 14px;
-    }
-    button:hover {
-      background: #2563eb;
-    }
-    #error {
-      color: #f87171;
-      font-size: 13px;
-      margin-top: 10px;
-      display: none;
-    }
+    body { font-family: 'Inter', sans-serif; }
+    .glass-card { background: rgba(30, 41, 59, 0.75); backdrop-filter: blur(12px); border: 1px solid rgba(255,255,255,0.08); }
   </style>
 </head>
-<body>
-  <div class="login-box">
-    <h1>📊 Log Dashboard</h1>
-    <input type="password" id="password" placeholder="Password" />
-    <button onclick="doLogin()">Login</button>
-    <p id="error">Wrong password</p>
+<body class="bg-surface text-on-surface min-h-screen flex items-center justify-center p-4">
+  <div class="glass-card rounded-2xl p-10 w-full max-w-md space-y-8">
+    <div class="text-center space-y-2">
+      <div class="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center mx-auto">
+        <span class="material-symbols-outlined text-on-surface text-3xl" style="font-variation-settings:'FILL'1">monitoring</span>
+      </div>
+      <h1 class="text-3xl font-bold text-primary">Lumina</h1>
+      <p class="text-on-surface-variant text-sm">Observability Platform</p>
+    </div>
+    <div class="space-y-4">
+      <div>
+        <label class="text-sm font-medium text-on-surface-variant block mb-1">Password</label>
+        <input id="password" type="password" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/50 focus:border-transparent outline-none transition-all" placeholder="Enter your password">
+      </div>
+      <p id="error" class="text-error text-sm hidden">Wrong password</p>
+      <button onclick="doLogin()" class="w-full py-3 bg-primary text-[#002e6a] font-bold rounded-xl hover:brightness-110 active:scale-[0.98] transition-all">Sign In</button>
+    </div>
   </div>
-
   <script>
     async function doLogin() {
       const password = document.getElementById("password").value;
       const res = await fetch("/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ password }),
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
       });
-
-      if (res.ok) {
-        window.location.href = "/index.html";
-      } else {
-        document.getElementById("error").style.display = "block";
-      }
+      if (res.ok) { window.location.href = "/dashboard"; }
+      else { document.getElementById("error").classList.remove("hidden"); }
     }
-
-    document.getElementById("password").addEventListener("keypress", (e) => {
-      if (e.key === "Enter") doLogin();
-    });
+    document.getElementById("password").addEventListener("keypress", e => { if (e.key === "Enter") doLogin(); });
   </script>
 </body>
 </html>

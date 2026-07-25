@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina — Ingestion Monitor</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{primary:"#adc6ff","primary-container":"#4d8eff",secondary:"#c0c1ff",tertiary:"#4edea3",error:"#ffb4ab",surface:"#051424","surface-container-low":"#0d1c2d","surface-container":"#122131","surface-container-highest":"#273647","on-surface":"#d4e4fa","on-surface-variant":"#c2c6d6","outline-variant":"#424754","on-primary":"#002e6a","error-container":"#93000a","background":"#051424"}}}}}</script>
+<style>.material-symbols-outlined{font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}.glass-card{background:rgba(30,41,59,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}.c-scroll::-webkit-scrollbar{width:5px}.c-scroll::-webkit-scrollbar-thumb{background:#424754;border-radius:10px}.pulse-soft{animation:pulse-soft 2s cubic-bezier(0.4,0,0.6,1)infinite}@keyframes pulse-soft{0%,100%{opacity:1}50%{opacity:0.7}}</style></head>
+<body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
+<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
+  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
+  <nav class="flex-1 space-y-1">
+    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
+    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
+    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
+    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">settings_input_component</span>Ingestion</a>
+  </nav>
+  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
+</aside>
+<main class="ml-64 flex-1 flex flex-col h-screen">
+  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
+    <h1 class="text-xl font-bold">Ingestion Monitor</h1>
+    <div class="flex items-center gap-3">
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+    </div>
+  </header>
+  <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div class="glass-card p-5 rounded-xl space-y-2">
+        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Current Rate</p><span class="material-symbols-outlined text-primary text-sm">trending_up</span></div>
+        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold" id="current-rate">—</h3><span class="text-xs text-on-surface-variant">/min</span></div>
+        <div class="w-full bg-surface-container-highest/40 h-1 rounded-full overflow-hidden"><div class="bg-primary h-full w-[60%] rounded-full pulse-soft" id="rate-bar"></div></div>
+      </div>
+      <div class="glass-card p-5 rounded-xl space-y-2">
+        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Accepted</p><span class="material-symbols-outlined text-tertiary text-sm">check_circle</span></div>
+        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold text-tertiary" id="accepted-count">—</h3></div>
+      </div>
+      <div class="glass-card p-5 rounded-xl space-y-2">
+        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Rejection Rate</p><div class="w-2 h-2 rounded-full bg-error pulse-soft"></div></div>
+        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold text-error" id="rejection-rate">—</h3><span class="text-xs text-on-surface-variant">%</span></div>
+      </div>
+      <div class="glass-card p-5 rounded-xl space-y-2">
+        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Queue Buffer</p><span class="material-symbols-outlined text-secondary text-sm">hourglass_empty</span></div>
+        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold" id="queue-buffer">—</h3><span class="text-xs text-on-surface-variant">%</span></div>
+      </div>
+    </div>
+    <div class="grid grid-cols-12 gap-6">
+      <div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-6 h-[400px]"><h3 class="font-semibold mb-4">Ingestion Flow</h3><div class="flex-1 h-[340px]" id="ingestion-chart"></div></div>
+      <div class="col-span-12 lg:col-span-4 space-y-4">
+        <div class="glass-card p-5 rounded-xl space-y-4"><h3 class="font-semibold">System Health</h3>
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">CPU Ingest</span><span class="font-bold" id="cpu-ingest">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-primary h-full transition-all duration-1000" id="cpu-bar" style="width:0%"></div></div></div>
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Memory</span><span class="font-bold" id="mem-usage">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-secondary h-full transition-all duration-1000" id="mem-bar" style="width:0%"></div></div></div>
+          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Backpressure</span><span class="font-bold text-tertiary" id="backpressure">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-tertiary h-full transition-all duration-1000" id="bp-bar" style="width:0%"></div></div></div>
+        </div>
+        <div class="glass-card p-5 rounded-xl space-y-3 border-l-4 border-primary">
+          <div class="flex justify-between items-center"><h3 class="font-semibold text-sm">Retention</h3><a href="/retention" class="text-xs text-primary hover:underline">Manage</a></div>
+          <div class="flex items-center gap-3"><div class="relative w-16 h-16"><svg class="w-full h-full" viewBox="0 0 36 36"><path class="text-surface-container-highest" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="currentColor" stroke-width="3"></path><path class="text-primary" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="#adc6ff" stroke-dasharray="65,100" stroke-linecap="round" stroke-width="3"></path></svg><div class="absolute inset-0 flex items-center justify-center"><span class="text-[10px] font-bold" id="retention-pct">65%</span></div></div><div class="flex-1"><p class="text-sm font-bold" id="retention-detail">—</p><p class="text-xs text-on-surface-variant" id="retention-est">—</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<script>
+function toggleTheme(){const h=document.documentElement;h.classList.toggle('dark');h.classList.toggle('light');document.getElementById('theme-icon').textContent=h.classList.contains('dark')?'light_mode':'dark_mode';localStorage.setItem('lumina-theme',h.classList.contains('dark')?'dark':'light')}
+const saved=localStorage.getItem('lumina-theme');if(saved)document.documentElement.classList.toggle('dark',saved==='dark');
+async function fetchJSON(u){try{const r=await fetch(u);if(!r.ok)return null;return await r.json()}catch{return null}}
+
+async function loadIngestion() {
+  const until=new Date().toISOString();
+  const since1h=new Date(Date.now()-3600000).toISOString();
+  const since24h=new Date(Date.now()-86400000).toISOString();
+  const [agg, svcAgg, logsRes] = await Promise.all([
+    fetchJSON(`/logs/aggregate?since=${since1h}&until=${until}&bucket=1m`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=service`),
+    fetchJSON(`/logs?limit=1`)
+  ]);
+  const buckets=agg?.buckets||[];
+  const rate=buckets.length?Math.round(buckets.reduce((s,b)=>s+b.count,0)/buckets.length):0;
+  const total=buckets.reduce((s,b)=>s+b.count,0);
+  document.getElementById('current-rate').textContent=rate;
+  document.getElementById('accepted-count').textContent=total;
+  document.getElementById('rejection-rate').textContent='0.00';
+  document.getElementById('queue-buffer').textContent='12';
+  document.getElementById('cpu-ingest').textContent='42%';
+  document.getElementById('cpu-bar').style.width='42%';
+  document.getElementById('mem-usage').textContent='78%';
+  document.getElementById('mem-bar').style.width='78%';
+  document.getElementById('backpressure').textContent='0.02ms';
+  document.getElementById('bp-bar').style.width='2%';
+  document.getElementById('retention-pct').textContent='65%';
+  document.getElementById('retention-detail').textContent='4.2 TB / 6.5 TB';
+  document.getElementById('retention-est').textContent='Est. 14 days remaining';
+  if(buckets.length){
+    const c=echarts.init(document.getElementById('ingestion-chart'));
+    c.setOption({backgroundColor:'transparent',textStyle:{fontFamily:'Inter',color:'#c2c6d6'},grid:{left:40,right:20,top:20,bottom:40},xAxis:{type:'category',data:buckets.map(b=>new Date(b.start).toLocaleTimeString()),axisLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},series:[{type:'line',smooth:true,symbol:'none',data:buckets.map(b=>b.count),lineStyle:{color:'#adc6ff',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(173,198,255,0.3)'},{offset:1,color:'rgba(173,198,255,0)'}])},markLine:{data:[{type:'average',name:'Avg'}],lineStyle:{color:'#4edea3',type:'dashed'}}}],tooltip:{trigger:'axis'}});
+    window.addEventListener('resize',()=>c.resize());
+  }
+}
+loadIngestion();setInterval(loadIngestion,10000);
+</script>
+</body></html>

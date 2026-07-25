@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Lumina — Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<script>tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-error":"#690005","on-tertiary-fixed-variant":"#005236","secondary-container":"#3131c0","primary":"#adc6ff","on-tertiary":"#003824","on-error-container":"#ffdad6","primary-container":"#4d8eff","secondary":"#c0c1ff","tertiary-container":"#00a572","on-surface-variant":"#c2c6d6","inverse-primary":"#005ac2","surface":"#051424","surface-container-highest":"#273647","surface-tint":"#adc6ff","outline":"#8c909f","on-secondary-fixed":"#07006c","on-primary-fixed":"#001a42","surface-container-low":"#0d1c2d","surface-container-lowest":"#010f1f","outline-variant":"#424754","on-secondary-fixed-variant":"#2f2ebe","tertiary-fixed":"#6ffbbe","error-container":"#93000a","on-tertiary-container":"#00311f","secondary-fixed-dim":"#c0c1ff","inverse-on-surface":"#233143","surface-variant":"#273647","tertiary":"#4edea3","error":"#ffb4ab","secondary-fixed":"#e1e0ff","surface-bright":"#2c3a4c","on-primary-fixed-variant":"#004395","surface-dim":"#051424","primary-fixed":"#d8e2ff","tertiary-fixed-dim":"#4edea3","surface-container-high":"#1c2b3c","on-tertiary-fixed":"#002113","on-primary":"#002e6a","surface-container":"#122131","on-secondary-container":"#b0b2ff","on-primary-container":"#00285d","on-background":"#d4e4fa","inverse-surface":"#d4e4fa","on-secondary":"#1000a9","primary-fixed-dim":"#adc6ff","on-surface":"#d4e4fa","background":"#051424"}}}}}</script>
+<style>.material-symbols-outlined{font-variation-settings:'FILL'0,'wght'400,'GRAD'0,'opsz'24}.glass-card{background:rgba(30,41,59,0.75);backdrop-filter:blur(12px);border:1px solid rgba(255,255,255,0.08)}.log-stream::-webkit-scrollbar{width:4px}.log-stream::-webkit-scrollbar-track{background:transparent}.log-stream::-webkit-scrollbar-thumb{background:#424754;border-radius:10px}</style></head>
+<body class="bg-background text-on-surface font-body-md">
+<aside class="w-64 fixed left-0 top-0 h-screen bg-surface-container-low border-r border-outline-variant/30 flex flex-col p-md z-50">
+  <div class="mb-xl px-sm flex items-center gap-md">
+    <div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div>
+    <div><h1 class="text-xl font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div>
+  </div>
+  <nav class="flex-1 space-y-1 overflow-y-auto">
+    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary"><span class="material-symbols-outlined">dashboard</span><span class="text-sm">Dashboard</span></a>
+    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50"><span class="material-symbols-outlined">search_insights</span><span class="text-sm">Logs Explorer</span></a>
+    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50"><span class="material-symbols-outlined">analytics</span><span class="text-sm">Analytics</span></a>
+    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50"><span class="material-symbols-outlined">settings_input_component</span><span class="text-sm">Ingestion Monitor</span></a>
+    <a href="/retention" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50"><span class="material-symbols-outlined">storage</span><span class="text-sm">Retention</span></a>
+  </nav>
+  <div class="mt-auto pt-4 border-t border-outline-variant/20">
+    <div class="flex items-center gap-3 px-4 py-2 text-tertiary"><span class="material-symbols-outlined">check_circle</span><span class="text-sm">System Healthy</span></div>
+  </div>
+</aside>
+<main class="ml-64 min-h-screen flex flex-col">
+  <header class="sticky top-0 z-40 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
+    <h2 class="text-xl font-bold">Dashboard</h2>
+    <div class="flex items-center gap-3">
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="window.location.href='/auth/logout'; window.location.href='/login.html'"><span class="material-symbols-outlined">logout</span></button>
+    </div>
+  </header>
+  <div class="p-6 flex-1 space-y-6 max-w-[1600px] mx-auto w-full">
+    <section class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4" id="metric-cards"></section>
+    <div class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+      <section class="xl:col-span-2 glass-card flex flex-col h-[500px] overflow-hidden rounded-2xl">
+        <div class="px-6 py-4 border-b border-outline-variant/20 flex justify-between items-center">
+          <div class="flex items-center gap-3"><div class="h-2 w-2 rounded-full bg-tertiary" id="live-dot"></div><h3 class="font-semibold">Live Log Stream</h3></div>
+          <div class="flex items-center gap-2"><span class="text-xs text-on-surface-variant" id="stream-count">0 logs/min</span></div>
+        </div>
+        <div class="flex-1 overflow-y-auto log-stream font-mono text-xs bg-surface-container-lowest/50 p-4" id="log-stream"></div>
+        <div class="p-3 bg-surface-container flex items-center gap-3">
+          <div class="flex-1 flex items-center bg-surface-container-low rounded-lg px-4 py-2 border border-outline-variant/30">
+            <span class="text-primary text-xs font-mono">query > </span>
+            <input class="bg-transparent border-none focus:ring-0 text-on-surface font-mono text-xs flex-1 ml-2 outline-none" placeholder="service:checkout level:error" id="stream-query"/>
+          </div>
+          <button class="bg-primary text-[#002e6a] px-5 py-2 rounded-lg text-xs font-bold hover:brightness-110" onclick="loadLiveLogs()">RUN</button>
+        </div>
+      </section>
+      <section class="glass-card flex flex-col h-[500px] rounded-2xl">
+        <div class="px-6 py-4 border-b border-outline-variant/20"><h3 class="font-semibold">Cluster Health</h3></div>
+        <div class="p-6 flex-1 flex flex-col justify-between" id="cluster-health"></div>
+      </section>
+    </div>
+    <section class="glass-card p-6 rounded-2xl border-l-4 border-error" id="alert-banner" style="display:none">
+      <div class="flex items-center gap-4">
+        <div class="p-3 bg-error/10 text-error rounded-full"><span class="material-symbols-outlined">notification_important</span></div>
+        <div class="flex-1"><h4 class="font-semibold" id="alert-title">No active alerts</h4><p class="text-sm text-on-surface-variant mt-1" id="alert-desc">System is operating normally.</p></div>
+        <a href="/logs-explorer" class="px-4 py-2 bg-primary text-[#002e6a] rounded-lg text-xs font-bold hover:brightness-110">View Logs</a>
+      </div>
+    </section>
+  </div>
+</main>
+<script>
+function toggleTheme() {
+  const html = document.documentElement;
+  html.classList.toggle('dark');
+  html.classList.toggle('light');
+  document.getElementById('theme-icon').textContent = html.classList.contains('dark') ? 'light_mode' : 'dark_mode';
+  localStorage.setItem('lumina-theme', html.classList.contains('dark') ? 'dark' : 'light');
+}
+const saved = localStorage.getItem('lumina-theme');
+if (saved) document.documentElement.classList.toggle('dark', saved === 'dark');
+
+async function fetchJSON(url) { const r = await fetch(url); if (!r.ok) return null; return r.json(); }
+
+async function loadMetrics() {
+  const until = new Date().toISOString();
+  const since = new Date(Date.now() - 3600000).toISOString();
+  const since24h = new Date(Date.now() - 86400000).toISOString();
+  const [totalRes, errAgg, svcRes, ingestAgg] = await Promise.all([
+    fetchJSON(`/logs?limit=1`),
+    fetchJSON(`/logs/aggregate?since=${since}&until=${until}&bucket=1h&level=error`),
+    fetchJSON(`/logs?limit=1000`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h`)
+  ]);
+  const totalLogs = totalRes?.logs?.[0]?.id || '—';
+  const errorCount = errAgg?.buckets?.reduce((s,b) => s + b.count, 0) || 0;
+  const services = new Set((svcRes?.logs||[]).map(l => l.service));
+  const ingestRate = ingestAgg?.buckets?.length ? Math.round((ingestAgg.buckets.reduce((s,b) => s + b.count, 0) / 24)) : 0;
+  document.getElementById('metric-cards').innerHTML = `
+    <div class="glass-card p-5 rounded-xl min-h-[140px] group hover:-translate-y-0.5 transition-all">
+      <div class="flex justify-between items-start"><div class="p-2 rounded-xl bg-primary-container/10 text-primary"><span class="material-symbols-outlined">database</span></div><div class="flex items-center gap-1 text-tertiary text-xs bg-tertiary/10 px-2 py-1 rounded-full"><span class="material-symbols-outlined text-xs">trending_up</span>15%</div></div>
+      <p class="text-on-surface-variant text-xs mt-3 uppercase tracking-wider">Total Logs</p>
+      <h3 class="text-xl font-bold mt-1">${totalLogs}</h3>
+    </div>
+    <div class="glass-card p-5 rounded-xl min-h-[140px] group hover:-translate-y-0.5 transition-all">
+      <div class="flex justify-between items-start"><div class="p-2 rounded-xl bg-error-container/10 text-error"><span class="material-symbols-outlined">report_problem</span></div><div class="flex items-center gap-1 text-error text-xs bg-error/10 px-2 py-1 rounded-full">${errorCount}h</div></div>
+      <p class="text-on-surface-variant text-xs mt-3 uppercase tracking-wider">Errors (1h)</p>
+      <h3 class="text-xl font-bold mt-1">${errorCount}</h3>
+    </div>
+    <div class="glass-card p-5 rounded-xl min-h-[140px] group hover:-translate-y-0.5 transition-all">
+      <div class="flex justify-between items-start"><div class="p-2 rounded-xl bg-tertiary-container/10 text-tertiary"><span class="material-symbols-outlined">dns</span></div><div class="flex items-center gap-1 text-on-surface-variant text-xs bg-surface-container-highest px-2 py-1 rounded-full">Active</div></div>
+      <p class="text-on-surface-variant text-xs mt-3 uppercase tracking-wider">Services</p>
+      <h3 class="text-xl font-bold mt-1">${services.size || '—'}</h3>
+    </div>
+    <div class="glass-card p-5 rounded-xl min-h-[140px] group hover:-translate-y-0.5 transition-all">
+      <div class="flex justify-between items-start"><div class="p-2 rounded-xl bg-secondary-container/10 text-secondary"><span class="material-symbols-outlined">speed</span></div><div class="flex items-center gap-1 text-secondary text-xs bg-secondary/10 px-2 py-1 rounded-full">LIVE</div></div>
+      <p class="text-on-surface-variant text-xs mt-3 uppercase tracking-wider">Ingestion</p>
+      <h3 class="text-xl font-bold mt-1">${ingestRate} <span class="text-sm font-normal">logs/h</span></h3>
+    </div>`;
+}
+async function loadLiveLogs() {
+  const q = document.getElementById('stream-query').value;
+  const params = new URLSearchParams({ limit: '50' });
+  if (q) {
+    const parts = q.split(' ');
+    parts.forEach(p => {
+      if (p.includes(':')) { const [k,v] = p.split(':'); if (k === 'service') params.set('service', v); if (k === 'level') params.set('level', v); }
+      else params.set('q', p);
+    });
+  }
+  const res = await fetchJSON(`/logs?${params}`);
+  const container = document.getElementById('log-stream');
+  container.innerHTML = '';
+  const logs = res?.logs || [];
+  document.getElementById('stream-count').textContent = `${logs.length} logs`;
+  logs.forEach(log => {
+    const d = document.createElement('div');
+    const lvlColors = {error:'border-l-error text-error', warn:'border-l-[#f59e0b] text-[#f59e0b]', info:'border-l-primary text-primary', debug:'border-l-outline text-outline'};
+    d.className = `flex items-start gap-3 py-1 px-2 hover:bg-surface-container-highest/20 border-l-4 ${lvlColors[log.level]||'border-l-primary text-primary'}`;
+    d.innerHTML = `<span class="text-on-surface-variant/60 w-28 shrink-0">${new Date(log.timestamp).toLocaleTimeString()}</span><span class="font-bold uppercase w-14 shrink-0">${log.level}</span><span class="text-on-surface flex-1 truncate">${log.service}: ${log.message}</span>`;
+    container.appendChild(d);
+  });
+}
+async function loadClusterHealth() {
+  const until = new Date().toISOString();
+  const since = new Date(Date.now() - 3600000).toISOString();
+  const agg = await fetchJSON(`/logs/aggregate?since=${since}&until=${until}&bucket=5m&group_by=service`);
+  const buckets = agg?.buckets || [];
+  const services = [...new Set(buckets.map(b => b.group))].slice(0,5);
+  document.getElementById('cluster-health').innerHTML = services.length ? `
+    <div class="space-y-4">${services.map(s => {
+      const svcBuckets = buckets.filter(b => b.group === s);
+      const total = svcBuckets.reduce((a,b) => a + b.count, 0);
+      const health = total < 100 ? 99.9 : total < 500 ? 95 : 85;
+      const color = health >= 99 ? 'tertiary' : health >= 90 ? 'secondary' : 'error';
+      return `<div><div class="flex justify-between mb-1 text-xs"><span class="font-medium">${s.toUpperCase()}</span><span class="text-${color}">${health}%</span></div><div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden"><div class="bg-${color} h-full" style="width:${health}%"></div></div></div>`;
+    }).join('')}</div>
+    <div class="h-32 bg-surface-container-lowest/30 rounded-xl flex items-center justify-center border border-dashed border-outline-variant/50"><div class="text-center"><p class="text-xs text-on-surface-variant">Last 1 hour</p><p class="text-sm font-semibold text-primary mt-1">${buckets.reduce((a,b) => a + b.count, 0)} events</p></div></div>
+  ` : '<div class="text-center text-on-surface-variant text-sm flex-1 flex items-center justify-center">No service data yet</div>';
+}
+loadMetrics(); loadLiveLogs(); loadClusterHealth();
+setInterval(loadMetrics, 10000);
+setInterval(loadLiveLogs, 5000);
+const dot = document.getElementById('live-dot');
+setInterval(() => dot.style.opacity = dot.style.opacity === '0.3' ? '1' : '0.3', 1500);
+</script>
+</body></html>

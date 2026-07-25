@@ -9,6 +9,8 @@ import authRouter from "./routes/auth.js";
 import { checkAuth } from "./controllers/authController.js";
 
 import path from "path";
+import { fileURLToPath } from "url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json());
 app.use(
@@ -19,10 +21,19 @@ app.use(
         cookie: { maxAge: 24 * 60 * 60 * 1000 },
     })
 );
-app.get("/index.html", checkAuth, (req, res) => {
-  res.sendFile(path.join(process.cwd(), "public", "index.html"));
-});
-app.use(express.static(path.join(process.cwd(), "public")));
+
+const PUBLIC = path.join(process.cwd(), "public");
+const authPage = (file: string) => (req: any, res: any) => {
+  res.sendFile(path.join(PUBLIC, file));
+};
+app.get("/login.html", (req, res) => res.sendFile(path.join(PUBLIC, "login.html")));
+app.get("/", (req, res) => res.redirect("/dashboard"));
+app.get("/dashboard", checkAuth, authPage("dashboard.html"));
+app.get("/logs-explorer", checkAuth, authPage("logs-explorer.html"));
+app.get("/analytics", checkAuth, authPage("analytics.html"));
+app.get("/ingestion", checkAuth, authPage("ingestion.html"));
+app.get("/retention", checkAuth, authPage("retention.html"));
+app.use(express.static(PUBLIC));
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
