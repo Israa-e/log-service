@@ -22,5 +22,5 @@ export function checkAuth(req: Request, res: Response, next: Function) {
   if ((req.session as any)?.authenticated) {
     return next();
   }
-  res.status(401).json({ error: "not authenticated" });
+  res.redirect("/login.html");
 }

@@ -1,71 +1,158 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Lumina — Retention</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css"></head>
+<html class="dark" lang="en">
+
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Lumina — Retention</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap"
+    rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css">
+</head>
+
 <body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
-<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
-  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
-  <nav class="flex-1 space-y-1">
-    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
-    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
-    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
-    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
-    <a href="/retention" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">storage</span>Retention</a>
-  </nav>
-  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
-</aside>
-<main class="ml-64 flex-1 flex flex-col h-screen">
-  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
-    <h1 class="text-xl font-bold">Retention</h1>
-    <div class="flex items-center gap-3">
-      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span class="material-symbols-outlined">notifications</span></button>
-      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
-    </div>
-  </header>
-  <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-card p-5 rounded-xl"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Retention Period</p><h3 class="text-2xl font-bold mt-2">90 Days</h3></div>
-      <div class="glass-card p-5 rounded-xl"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Cleanup Status</p><div class="flex items-center gap-2 mt-2"><h3 class="text-xl font-bold text-tertiary">Running</h3><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span></div></div>
-      <div class="glass-card p-5 rounded-xl"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Deleted Today</p><h3 class="text-2xl font-bold mt-2" id="deleted-today">—</h3></div>
-      <div class="glass-card p-5 rounded-xl"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Storage Used</p><h3 class="text-2xl font-bold mt-2" id="storage-used">—</h3></div>
-    </div>
-    <div class="glass-card rounded-xl p-6">
-      <h3 class="font-semibold mb-4">Storage Timeline</h3>
-      <div class="relative pt-8 pb-4"><div class="absolute top-1/2 left-0 w-full h-px bg-outline-variant/30"></div>
-        <div class="flex justify-between relative">
-          <div class="text-center"><div class="w-12 h-12 rounded-full bg-primary flex items-center justify-center mx-auto shadow-lg shadow-primary/20 relative z-10"><span class="material-symbols-outlined text-on-primary">bolt</span></div><p class="text-xs font-bold mt-2">Hot</p><p class="text-[10px] text-on-surface-variant">Days 1-7</p></div>
-          <div class="text-center"><div class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center mx-auto relative z-10"><span class="material-symbols-outlined text-on-secondary-container">ac_unit</span></div><p class="text-xs font-bold mt-2">Warm</p><p class="text-[10px] text-on-surface-variant">Days 8-30</p></div>
-          <div class="text-center"><div class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mx-auto relative z-10"><span class="material-symbols-outlined text-on-surface-variant">archive</span></div><p class="text-xs font-bold mt-2">Cold</p><p class="text-[10px] text-on-surface-variant">Days 31-90</p></div>
-          <div class="text-center"><div class="w-12 h-12 rounded-full bg-error-container/30 flex items-center justify-center mx-auto border border-error/30 relative z-10"><span class="material-symbols-outlined text-error">delete_sweep</span></div><p class="text-xs font-bold mt-2">Purge</p><p class="text-[10px] text-on-surface-variant">After 90d</p></div>
-        </div>
+  <aside
+    class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
+    <div class="mb-6 px-2 flex items-center gap-3">
+      <div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span
+          class="material-symbols-outlined text-on-primary-container"
+          style="font-variation-settings:'FILL'1">monitoring</span></div>
+      <div>
+        <h1 class="text-lg font-bold text-primary">Lumina</h1>
+        <p class="text-xs text-on-surface-variant">Observability</p>
       </div>
     </div>
-    <div class="glass-card rounded-xl p-6">
-      <div class="flex justify-between items-center mb-4"><h3 class="font-semibold">Retention Log</h3>
-        <button class="px-4 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110" onclick="runRetention()">Run Now</button></div>
-      <table class="w-full text-left"><thead class="bg-surface-container-low/50"><tr class="text-xs text-on-surface-variant uppercase tracking-wider"><th class="px-4 py-3">Time</th><th class="px-4 py-3">Deleted</th></tr></thead><tbody class="divide-y divide-outline-variant/10" id="retention-log"></tbody></table>
+    <nav class="flex-1 space-y-1">
+      <a href="/dashboard"
+        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
+          class="material-symbols-outlined">dashboard</span>Dashboard</a>
+      <a href="/logs-explorer"
+        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
+          class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
+      <a href="/analytics"
+        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
+          class="material-symbols-outlined">analytics</span>Analytics</a>
+      <a href="/ingestion"
+        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
+          class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
+      <a href="/retention"
+        class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span
+          class="material-symbols-outlined" style="font-variation-settings:'FILL'1">storage</span>Retention</a>
+    </nav>
+    <div class="mt-auto pt-4 border-t border-outline-variant/20">
+      <div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span
+          class="material-symbols-outlined">check_circle</span>System Healthy</div>
     </div>
-  </div>
-</main>
-<script src="app.js"></script>
-<script>
-initTheme();
-async function loadRetention() {
-  const logEl=document.getElementById('retention-log');
-  logEl.innerHTML='<tr><td class="px-4 py-3 text-xs text-on-surface-variant" colspan="2">Run retention to see results</td></tr>';
-}
-async function runRetention() {
-  const btn=document.querySelector('button[onclick="runRetention()"]');btn.textContent='Running...';btn.disabled=true;
-  try { const r=await fetch('/logs/retention/run',{method:'POST'}); const d=await r.json();
-    document.getElementById('retention-log').innerHTML=`<tr><td class="px-4 py-3 text-xs font-mono">${new Date().toLocaleString()}</td><td class="px-4 py-3 text-xs">${d.deleted} rows</td></tr>`;
-    document.getElementById('deleted-today').textContent=d.deleted;
-  } catch(e){alert('Failed: '+e.message)}
-  btn.textContent='Run Now';btn.disabled=false;
-}
-loadRetention();
-</script>
-</body></html>
+  </aside>
+  <main class="ml-64 flex-1 flex flex-col h-screen">
+    <header
+      class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
+      <h1 class="text-xl font-bold">Retention</h1>
+      <div class="flex items-center gap-3">
+        <button class="p-2 rounded-full text-on-surface-variant hover:text-primary"><span
+            class="material-symbols-outlined">notifications</span></button>
+        <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span
+            class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+      </div>
+    </header>
+    <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
+      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="glass-card p-5 rounded-xl">
+          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Retention Period</p>
+          <h3 class="text-2xl font-bold mt-2">90 Days</h3>
+        </div>
+        <div class="glass-card p-5 rounded-xl">
+          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Cleanup Status</p>
+          <div class="flex items-center gap-2 mt-2">
+            <h3 class="text-xl font-bold text-tertiary">Running</h3><span
+              class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+          </div>
+        </div>
+        <div class="glass-card p-5 rounded-xl">
+          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Deleted Today</p>
+          <h3 class="text-2xl font-bold mt-2" id="deleted-today">—</h3>
+        </div>
+        <div class="glass-card p-5 rounded-xl">
+          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Storage Used</p>
+          <h3 class="text-2xl font-bold mt-2" id="storage-used">—</h3>
+        </div>
+      </div>
+      <div class="glass-card rounded-xl p-6">
+        <h3 class="font-semibold mb-4">Storage Timeline</h3>
+        <div class="relative pt-8 pb-4">
+          <div class="absolute top-1/2 left-0 w-full h-px bg-outline-variant/30"></div>
+          <div class="flex justify-between relative">
+            <div class="text-center">
+              <div
+                class="w-12 h-12 rounded-full bg-primary flex items-center justify-center mx-auto shadow-lg shadow-primary/20 relative z-10">
+                <span class="material-symbols-outlined text-on-primary">bolt</span></div>
+              <p class="text-xs font-bold mt-2">Hot</p>
+              <p class="text-[10px] text-on-surface-variant">Days 1-7</p>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center mx-auto relative z-10">
+                <span class="material-symbols-outlined text-on-secondary-container">ac_unit</span></div>
+              <p class="text-xs font-bold mt-2">Warm</p>
+              <p class="text-[10px] text-on-surface-variant">Days 8-30</p>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mx-auto relative z-10">
+                <span class="material-symbols-outlined text-on-surface-variant">archive</span></div>
+              <p class="text-xs font-bold mt-2">Cold</p>
+              <p class="text-[10px] text-on-surface-variant">Days 31-90</p>
+            </div>
+            <div class="text-center">
+              <div
+                class="w-12 h-12 rounded-full bg-error-container/30 flex items-center justify-center mx-auto border border-error/30 relative z-10">
+                <span class="material-symbols-outlined text-error">delete_sweep</span></div>
+              <p class="text-xs font-bold mt-2">Purge</p>
+              <p class="text-[10px] text-on-surface-variant">After 90d</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="glass-card rounded-xl p-6">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="font-semibold">Retention Log</h3>
+          <button class="px-4 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110"
+            onclick="runRetention()">Run Now</button>
+        </div>
+        <table class="w-full text-left">
+          <thead class="bg-surface-container-low/50">
+            <tr class="text-xs text-on-surface-variant uppercase tracking-wider">
+              <th class="px-4 py-3">Time</th>
+              <th class="px-4 py-3">Deleted</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-outline-variant/10" id="retention-log"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+  <script src="app.js"></script>
+  <script>
+    initTheme();
+    async function loadRetention() {
+      const logEl = document.getElementById('retention-log');
+      logEl.innerHTML = '<tr><td class="px-4 py-3 text-xs text-on-surface-variant" colspan="2">Run retention to see results</td></tr>';
+    }
+    async function runRetention() {
+      const btn = document.querySelector('button[onclick="runRetention()"]'); btn.textContent = 'Running...'; btn.disabled = true;
+      try {
+        const r = await fetch('/logs/retention/run', { method: 'POST' }); const d = await r.json();
+        document.getElementById('retention-log').innerHTML = `<tr><td class="px-4 py-3 text-xs font-mono">${new Date().toLocaleString()}</td><td class="px-4 py-3 text-xs">${d.deleted} rows</td></tr>`;
+        document.getElementById('deleted-today').textContent = d.deleted;
+      } catch (e) { alert('Failed: ' + e.message) }
+      btn.textContent = 'Run Now'; btn.disabled = false;
+    }
+    loadRetention();
+  </script>
+</body>
+
+</html>
