@@ -54,10 +54,10 @@ export async function aggregateLogs(
 
         res.json(result);
 
-    } catch (error) {
+    } catch (error: any) {
 
-        res.status(500).json({
-            error: "internal server error"
+        res.status(400).json({
+            error: error.message
         });
 
     }

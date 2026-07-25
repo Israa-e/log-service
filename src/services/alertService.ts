@@ -78,3 +78,7 @@ export async function createAlertRule(rule: {
 
   return result.rows[0];
 }
+export async function listAlertRules() {
+  const result = await pool.query(`SELECT * FROM alert_rules ORDER BY id DESC`);
+  return result.rows;
+}

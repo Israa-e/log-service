@@ -7,6 +7,8 @@ services:
       RETENTION_DAYS: 30
       DB_HOST: db
       DB_PORT: 5432
+      DASHBOARD_PASSWORD: LogService2026!
+      SESSION_SECRET: fts-intern-log-service-secret-key-2026
     depends_on:
       db:
         condition: service_healthy
@@ -22,7 +24,7 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U loguser -d logdb"]
+      test: [ "CMD-SHELL", "pg_isready -U loguser -d logdb" ]
       interval: 5s
       timeout: 5s
       retries: 5

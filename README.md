@@ -25,13 +25,7 @@ This starts two containers:
 - `app` — the Node.js/TypeScript API, listening on port `8080`
 - `db` — PostgreSQL 16 with the TimescaleDB extension
 
-### Apply the database schema (first run only)
-
-```bash
-docker exec -i log-service-db-1 psql -U loguser -d logdb < src/db/schema.sql
-docker exec -it log-service-db-1 psql -U loguser -d logdb -c "SELECT create_hypertable('logs', 'timestamp');"
-docker exec -i log-service-db-1 psql -U loguser -d logdb < src/db/indexes.sql
-```
+Schema, indexes, and hypertable conversion are applied automatically on startup — no manual steps needed.
 
 ### Verify it's running
 
@@ -97,6 +91,34 @@ Returns counts per time bucket (and per group, if `group_by` is set):
 { "buckets": [{ "start": "2026-07-20T14:00:00Z", "group": "checkout", "count": 118 }] }
 ```
 
+## Extra Endpoints
+
+### `POST /auth/login` — Dashboard login
+```json
+{ "password": "<DASHBOARD_PASSWORD>" }
+```
+Returns a session cookie. Password is set via `DASHBOARD_PASSWORD` env var (default in docker-compose: `LogService2026!`).
+
+### `POST /auth/logout` — Dashboard logout
+
+### `POST /alerts` — Create alert rule
+```json
+{
+  "service": "checkout",
+  "threshold": 100,
+  "window_minutes": 5,
+  "webhook_url": "https://hooks.example.com/alert"
+}
+```
+Fires a webhook when error count in the window exceeds the threshold. Deduplicated (won't re-trigger within 10 minutes).
+
+### `GET /alerts/list` — List alert rules
+
+### `POST /logs/retention/run` — Manually trigger retention
+
+### Dashboard UI
+Browse to `http://localhost:8080/index.html`, log in with the password, and view logs in a table with live refresh.
+
 ## Schema Design
 
 ```sql
@@ -159,6 +181,7 @@ Tested locally using [autocannon](https://github.com/mcollina/autocannon) agains
 
 ## Known Limitations
 
-- No dashboard/UI (stretch goal, not implemented)
-- No authentication/multi-tenancy — all requests are treated as a single tenant
-- Retention interval (hourly) and batch size (1,000) are hardcoded constants rather than fully configurable
+- No multi-tenancy — all requests are treated as a single tenant
+- Retention interval (hourly) and batch size (1,000) are hardcoded rather than configurable at runtime
+- `GET /logs` returns raw rows as-is — `attributes` is returned as a JSON object (postgres row JSON serialization handles this)
+- No authentication on the API endpoints (only the dashboard UI is protected)

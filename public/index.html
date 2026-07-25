@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="ar">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Log Dashboard</title>
+  <link rel="stylesheet" href="index.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body>
+  <div class="layout">
+    <aside class="sidebar">
+      <div class="sidebar-title">📊 Log Service</div>
+      <nav>
+        <a href="#" class="nav-item active" data-view="dashboard">📈 Dashboard</a>
+        <a href="#" class="nav-item" data-view="logs">📄 Logs</a>
+        <a href="#" class="nav-item" data-view="settings">⚙️ Settings</a>
+      </nav>
+      <div class="theme-switcher">
+        <label>🎨 Theme</label>
+        <select id="theme-select" onchange="changeTheme(this.value)">
+          <option value="">Blue + Purple</option>
+          <option value="github">GitHub Dark</option>
+          <option value="emerald">Emerald</option>
+          <option value="cyber">Cyber Blue</option>
+          <option value="orange">Orange + Blue</option>
+        </select>
+      </div>
+    </aside>
+
+    <main class="content">
+
+      <!-- Dashboard View -->
+      <section id="view-dashboard" class="view">
+        <h1>Dashboard</h1>
+
+        <div class="stats">
+          <div class="stat-card">
+            <div class="stat-label">📄 Total Logs</div>
+            <div class="stat-value" id="stat-total">–</div>
+          </div>
+          <div class="stat-card errors">
+            <div class="stat-label">🔥 Errors (last hour)</div>
+            <div class="stat-value" id="stat-error-rate">–</div>
+          </div>
+          <div class="stat-card services">
+            <div class="stat-label">🧩 Services</div>
+            <div class="stat-value" id="stat-services">–</div>
+          </div>
+        </div>
+
+        <h2>📈 Errors per Hour (last 24 hours)</h2>
+        <div id="chart-container">
+          <canvas id="errorChart"></canvas>
+        </div>
+      </section>
+
+      <!-- Logs View -->
+      <section id="view-logs" class="view" style="display:none;">
+        <h1>Logs</h1>
+        <div class="filters" style="margin-bottom: 20px;">
+          <select id="new-log-level">
+            <option value="info">Info</option>
+            <option value="debug">Debug</option>
+            <option value="warn">Warn</option>
+            <option value="error">Error</option>
+          </select>
+          <input type="text" id="new-log-service" placeholder="Service (e.g. checkout)" />
+          <input type="text" id="new-log-message" placeholder="Message" style="flex:2;" />
+          <button onclick="addLog()">➕ Add Log</button>
+        </div>
+        <div class="filters">
+          <select id="filter-service">
+            <option value="">All Services</option>
+          </select>
+          <select id="filter-level">
+            <option value="">All Levels</option>
+            <option value="debug">Debug</option>
+            <option value="info">Info</option>
+            <option value="warn">Warn</option>
+            <option value="error">Error</option>
+          </select>
+          <input type="text" id="filter-q" placeholder="🔍 Search message..." />
+          <button onclick="loadLogs()">Search</button>
+        </div>
+
+        <table id="logs-table">
+          <thead>
+            <tr>
+              <th>Time</th>
+              <th>Level</th>
+              <th>Service</th>
+              <th>Message</th>
+            </tr>
+          </thead>
+          <tbody id="logs-body">
+            <tr>
+              <td colspan="4">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <!-- Settings View -->
+      <section id="view-settings" class="view" style="display:none;">
+        <h1>Settings — Alert Rules</h1>
+
+        <div class="filters" style="flex-direction: column; align-items: stretch; max-width: 400px;">
+          <input type="text" id="alert-service" placeholder="Service (leave empty for all)" />
+          <input type="number" id="alert-threshold" placeholder="Error threshold (e.g. 3)" />
+          <input type="number" id="alert-window" placeholder="Window in minutes (e.g. 5)" />
+          <input type="text" id="alert-webhook" placeholder="Webhook URL" />
+          <button onclick="createAlertRule()">➕ Add Alert Rule</button>
+        </div>
+
+        <h2>Active Rules</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Service</th>
+              <th>Threshold</th>
+              <th>Window</th>
+              <th>Webhook</th>
+            </tr>
+          </thead>
+          <tbody id="alerts-body">
+            <tr>
+              <td colspan="4">Loading...</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- Drawer -->
+  <div id="drawer-overlay" class="drawer-overlay" onclick="closeDrawer()"></div>
+  <div id="drawer" class="drawer">
+    <button class="drawer-close" onclick="closeDrawer()">✕</button>
+    <h2>Log Details</h2>
+    <div id="drawer-content"></div>
+  </div>
+
+  <script src="index.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>Login — Log Dashboard</title>
+  <style>
+    body {
+      font-family: system-ui, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+      margin: 0;
+    }
+    .login-box {
+      background: #1e293b;
+      padding: 40px;
+      border-radius: 8px;
+      width: 300px;
+      text-align: center;
+    }
+    h1 {
+      font-size: 20px;
+      margin-bottom: 20px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: #e2e8f0;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 10px;
+      background: #3b82f6;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: #2563eb;
+    }
+    #error {
+      color: #f87171;
+      font-size: 13px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-box">
+    <h1>📊 Log Dashboard</h1>
+    <input type="password" id="password" placeholder="Password" />
+    <button onclick="doLogin()">Login</button>
+    <p id="error">Wrong password</p>
+  </div>
+
+  <script>
+    async function doLogin() {
+      const password = document.getElementById("password").value;
+      const res = await fetch("/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password }),
+      });
+
+      if (res.ok) {
+        window.location.href = "/index.html";
+      } else {
+        document.getElementById("error").style.display = "block";
+      }
+    }
+
+    document.getElementById("password").addEventListener("keypress", (e) => {
+      if (e.key === "Enter") doLogin();
+    });
+  </script>
+</body>
+</html>

@@ -12,6 +12,7 @@
   "type": "module",
   "devDependencies": {
     "@types/express": "^5.0.6",
+    "@types/express-session": "^1.19.0",
     "@types/node": "^26.1.1",
     "@types/pg": "^8.20.0",
     "autocannon": "^8.0.0",
@@ -20,6 +21,7 @@
   },
   "dependencies": {
     "express": "^5.2.1",
+    "express-session": "^1.19.0",
     "pg": "^8.22.0"
   }
 }

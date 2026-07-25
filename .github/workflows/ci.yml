@@ -20,20 +20,16 @@ jobs:
       - name: Wait for services to be healthy
         run: |
           for i in {1..30}; do
-            if curl -s http://localhost:8080/health; then
+            if curl -sf http://localhost:8080/health > /dev/null 2>&1; then
               echo "Service is healthy!"
               exit 0
             fi
-            echo "Waiting for service..."
+            echo "Waiting for service... (attempt $i/30)"
             sleep 2
           done
           echo "Service did not become healthy in time"
+          docker compose logs
           exit 1
-
-      - name: Apply database schema
-        run: |
-          docker exec -i $(docker compose ps -q db) psql -U loguser -d logdb < src/db/schema.sql
-          docker exec $(docker compose ps -q db) psql -U loguser -d logdb -c "SELECT create_hypertable('logs', 'timestamp');"
 
       - name: Test ingestion endpoint
         run: |
@@ -44,6 +40,10 @@ jobs:
       - name: Test query endpoint
         run: |
           curl -f "http://localhost:8080/logs?service=ci-test"
+
+      - name: Test aggregate endpoint
+        run: |
+          curl -f "http://localhost:8080/logs/aggregate?since=2026-07-24T00:00:00Z&until=2026-07-25T00:00:00Z&bucket=1h&group_by=service"
 
       - name: Show logs on failure
         if: failure()

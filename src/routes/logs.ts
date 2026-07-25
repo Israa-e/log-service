@@ -15,9 +15,9 @@ router.post("/retention/run", async (req, res) => {
 });
 router.post("/", createLogs);
 
-router.get("/", getLogs);
-
 router.get("/aggregate", aggregateLogs);
+
+router.get("/", getLogs);
 
 
 export default router;

@@ -2,16 +2,37 @@ import { pool } from "../db/index.js";
 
 const VALID_LEVELS = ["debug", "info", "warn", "error"];
 
-export async function insertLogs(logs: any[]) {
+function coerceAttrValue(val: string): string | number | boolean {
+  if (val === "true") return true;
+  if (val === "false") return false;
+  const num = Number(val);
+  if (!isNaN(num) && val.trim() !== "") return num;
+  return val;
+}
+
+interface LogEntry {
+  timestamp: string;
+  level: string;
+  service: string;
+  message: string;
+  attributes?: Record<string, string | number | boolean>;
+}
+
+interface InsertResult {
+  accepted: number;
+  rejected: { index: number; reason: string }[];
+}
+
+export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
     if (!Array.isArray(logs)) {
         return { accepted: 0, rejected: [{ index: -1, reason: "logs must be an array" }] };
     }
 
     const rejected: { index: number; reason: string }[] = [];
-    let accepted = 0;
+    const validRows: (string | null)[][] = [];
 
     for (let index = 0; index < logs.length; index++) {
-        const log = logs[index];
+        const log = logs[index]!;
 
         const time = new Date(log.timestamp);
         if (isNaN(time.getTime())) {
@@ -40,25 +61,52 @@ export async function insertLogs(logs: any[]) {
             continue;
         }
 
-        await pool.query(
-            `INSERT INTO logs (timestamp, level, service, message, attributes)
-       VALUES ($1, $2, $3, $4, $5)`,
-            [
-                log.timestamp,
-                log.level,
-                log.service,
-                log.message,
-                log.attributes ? JSON.stringify(log.attributes) : null,
-            ]
-        );
-        accepted++;
+        if (log.attributes != null) {
+            let hasNested = false;
+            for (const [k, v] of Object.entries(log.attributes)) {
+                if (v != null && typeof v === "object") {
+                    rejected.push({ index, reason: `nested object in attribute '${k}'` });
+                    hasNested = true;
+                    break;
+                }
+            }
+            if (hasNested) continue;
+        }
+
+        validRows.push([
+            log.timestamp,
+            log.level,
+            log.service,
+            log.message,
+            log.attributes ? JSON.stringify(log.attributes) : null,
+        ]);
     }
 
-    return { accepted, rejected };
+    if (validRows.length > 0) {
+        const placeholders: string[] = [];
+        const flatValues: any[] = [];
+        let idx = 1;
+        for (const row of validRows) {
+            placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4})`);
+            flatValues.push(row[0], row[1], row[2], row[3], row[4]);
+            idx += 5;
+        }
+
+        await pool.query(
+            `INSERT INTO logs (timestamp, level, service, message, attributes) VALUES ${placeholders.join(", ")}`,
+            flatValues
+        );
+    }
+
+    return { accepted: validRows.length, rejected };
 }
 
 export async function queryLogs(query: any) {
     const { service, level, since, until, q, cursor } = query;
+
+    if (level && !VALID_LEVELS.includes(level)) {
+        throw new Error(`invalid level: '${level}'`);
+    }
 
     let limit = 100;
     if (query.limit) {
@@ -72,6 +120,8 @@ export async function queryLogs(query: any) {
     const conditions: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
+    let sinceDate: Date | undefined;
+    let untilDate: Date | undefined;
 
     if (service) {
         conditions.push(`service = $${paramIndex}`);
@@ -86,7 +136,7 @@ export async function queryLogs(query: any) {
     }
 
     if (since) {
-        const sinceDate = new Date(since);
+        sinceDate = new Date(since);
         if (isNaN(sinceDate.getTime())) throw new Error("invalid 'since' timestamp");
         conditions.push(`timestamp >= $${paramIndex}`);
         values.push(sinceDate.toISOString());
@@ -94,11 +144,15 @@ export async function queryLogs(query: any) {
     }
 
     if (until) {
-        const untilDate = new Date(until);
+        untilDate = new Date(until);
         if (isNaN(untilDate.getTime())) throw new Error("invalid 'until' timestamp");
         conditions.push(`timestamp < $${paramIndex}`);
         values.push(untilDate.toISOString());
         paramIndex++;
+    }
+
+    if (sinceDate && untilDate && untilDate <= sinceDate) {
+        throw new Error("'until' must be after 'since'");
     }
 
     if (q) {
@@ -110,8 +164,10 @@ export async function queryLogs(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
+            const rawValue = query[key];
+            const coerced = coerceAttrValue(rawValue);
             conditions.push(`attributes @> $${paramIndex}::jsonb`);
-            values.push(JSON.stringify({ [attrKey]: query[key] }));
+            values.push(JSON.stringify({ [attrKey]: coerced }));
             paramIndex++;
         }
     }
@@ -170,6 +226,13 @@ export async function queryAggregate(query: any) {
     if (isNaN(sinceDate.getTime()) || isNaN(untilDate.getTime())) {
         throw new Error("invalid 'since' or 'until' timestamp");
     }
+    if (untilDate <= sinceDate) {
+        throw new Error("'until' must be after 'since'");
+    }
+
+    if (level && !VALID_LEVELS.includes(level)) {
+        throw new Error(`invalid level: '${level}'`);
+    }
 
     const conditions: string[] = [`timestamp >= $1`, `timestamp < $2`];
     const values: any[] = [sinceDate.toISOString(), untilDate.toISOString()];
@@ -191,6 +254,16 @@ export async function queryAggregate(query: any) {
         conditions.push(`message ILIKE $${paramIndex}`);
         values.push(`%${q}%`);
         paramIndex++;
+    }
+
+    for (const key in query) {
+        if (key.startsWith("attr.")) {
+            const attrKey = key.slice(5);
+            const coerced = coerceAttrValue(query[key]);
+            conditions.push(`attributes @> $${paramIndex}::jsonb`);
+            values.push(JSON.stringify({ [attrKey]: coerced }));
+            paramIndex++;
+        }
     }
 
     const whereClause = conditions.join(" AND ");

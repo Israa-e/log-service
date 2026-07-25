@@ -1,8 +1,8 @@
 import { Router } from "express";
-import { createAlert } from "../controllers/alertsController.js";
+import { createAlert, listAlerts } from "../controllers/alertsController.js";
 
 const router = Router();
 
 router.post("/", createAlert);
-
+router.get("/list", listAlerts);
 export default router;
