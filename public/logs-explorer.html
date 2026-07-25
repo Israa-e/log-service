@@ -27,15 +27,17 @@
       <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
     </div>
   </header>
-  <div class="px-6 py-3 glass-card flex flex-wrap items-center gap-3 mx-6 mt-3 rounded-xl">
-    <div class="flex items-center gap-2 text-xs uppercase text-on-surface-variant tracking-wider">Filters:</div>
-    <button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-svc').focus()">Service <span class="material-symbols-outlined text-sm">expand_more</span></button>
-    <button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-lvl').focus()">Level <span class="material-symbols-outlined text-sm">expand_more</span></button>
-    <input id="f-svc" class="w-32 bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Service" onchange="loadLogs()" onkeyup="if(event.key==='Enter')loadLogs()">
-    <select id="f-lvl" class="bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" onchange="loadLogs()"><option value="">All Levels</option><option>debug</option><option>info</option><option>warn</option><option>error</option></select>
-    <input id="f-q" class="flex-1 min-w-[200px] bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search message..." onkeyup="if(event.key==='Enter')loadLogs()">
-    <button class="flex items-center gap-1 px-4 py-1.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110" onclick="loadLogs()"><span class="material-symbols-outlined text-sm">search</span>Search</button>
-    <span class="text-xs text-on-surface-variant ml-auto" id="result-count"></span>
+  <div class="px-6 py-3 glass-card mx-6 mt-3 rounded-xl">
+    <ul class="flex flex-wrap items-center gap-3">
+      <li class="flex items-center gap-2 text-xs uppercase text-on-surface-variant tracking-wider">Filters:</li>
+      <li><button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-svc').focus()">Service <span class="material-symbols-outlined text-sm">expand_more</span></button></li>
+      <li><button class="flex items-center gap-1 px-3 py-1.5 bg-surface-container border border-outline-variant/30 rounded-md text-sm hover:border-primary/50" onclick="document.getElementById('f-lvl').focus()">Level <span class="material-symbols-outlined text-sm">expand_more</span></button></li>
+      <li><input id="f-svc" class="w-32 bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Service" onchange="loadLogs()" onkeyup="if(event.key==='Enter')loadLogs()"></li>
+      <li><select id="f-lvl" class="bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" onchange="loadLogs()"><option value="">All Levels</option><option>debug</option><option>info</option><option>warn</option><option>error</option></select></li>
+      <li><input id="f-q" class="flex-1 min-w-[200px] bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search message..." onkeyup="if(event.key==='Enter')loadLogs()"></li>
+      <li><button class="flex items-center gap-1 px-4 py-1.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110" onclick="loadLogs()"><span class="material-symbols-outlined text-sm">search</span>Search</button></li>
+      <li class="text-xs text-on-surface-variant ml-auto" id="result-count"></li>
+    </ul>
   </div>
   <div class="flex-1 overflow-hidden flex flex-col mx-6 my-3 rounded-xl glass-card">
     <div class="px-6 py-2 grid grid-cols-12 gap-3 border-b border-outline-variant/20 bg-surface-container-low text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
