@@ -26,6 +26,7 @@ docker compose up -d --build
 
 ### Logs Explorer
 Advanced search, filtering by service/level/message, time range selection, and a detail drawer for individual log entries.
+
 ![Logs](screens/logs.png)
 
 ### Analytics & Metrics
