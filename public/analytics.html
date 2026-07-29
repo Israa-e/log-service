@@ -1,169 +1,462 @@
 <!DOCTYPE html>
 <html class="dark" lang="en">
-
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>Lumina Logs — Analytics</title>
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log — Metrics & Aggregation</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="tailwind-config.js"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap"
-    rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-    rel="stylesheet" />
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
-  <link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+  .status-chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 2px; font-family: 'JetBrains Mono', monospace; font-size: 10px; font-weight: 700; text-transform: uppercase; }
+  .time-btn.active { background: var(--secondary); color: var(--on-secondary); }
+  .table-row:hover { background: var(--surface-container-high); }
+</style>
 </head>
+<body class="flex min-h-screen">
 
-<body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
-  <aside
-    class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
-    <div class="mb-6 px-2 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span
-          class="material-symbols-outlined text-on-primary-container"
-          style="font-variation-settings:'FILL'1">monitoring</span></div>
+<!-- SideNavBar -->
+<aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+  <div class="px-panel-padding mb-8">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-on-primary">
+        <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">layers</span>
+      </div>
       <div>
-        <h1 class="text-lg font-bold text-primary">Lumina Logs</h1>
-        <p class="text-xs text-on-surface-variant">Observability</p>
+        <h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary leading-tight">Obsidian Log</h1>
+        <p class="font-code-sm text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p>
       </div>
     </div>
-    <nav class="flex-1 space-y-1">
-      <a href="/dashboard"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">dashboard</span>Dashboard</a>
-      <a href="/logs-explorer"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
-      <a href="/analytics"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span
-          class="material-symbols-outlined">analytics</span>Analytics</a>
-      <a href="/ingestion"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
-      <a href="/retention"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">storage</span>Retention</a>
-    </nav>
-    <div class="mt-auto pt-4 border-t border-outline-variant/20">
-      <div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span
-          class="material-symbols-outlined">check_circle</span>System Healthy</div>
-    </div>
-  </aside>
-  <main class="ml-64 flex-1 flex flex-col h-screen">
-    <header
-      class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
-      <h1 class="text-xl font-bold">Analytics</h1>
-      <div class="flex items-center gap-3">
-        <div class="relative" id="notif-btn"><button class="p-2 rounded-full text-on-surface-variant hover:text-primary relative" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-[10px] font-bold text-white rounded-full flex items-center justify-center hidden">0</span></button><div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20 bg-surface-container-high/50"><h3 class="text-sm font-semibold">Notifications</h3><button class="text-xs text-primary hover:underline" onclick="markAllNotifRead()">Mark all read</button></div><div class="max-h-80 overflow-y-auto c-scroll" id="notif-list"><div class="px-4 py-8 text-center text-on-surface-variant text-sm">Loading...</div></div></div></div>
-        <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span
-            class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+  </div>
+  <nav class="flex-1 space-y-1 px-3">
+    <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md">
+      <span class="material-symbols-outlined">terminal</span><span>Logs</span>
+    </a>
+    <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-secondary font-bold bg-surface-container-highest transition-colors font-body-md text-body-md">
+      <span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">analytics</span><span>Metrics</span>
+    </a>
+    <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md">
+      <span class="material-symbols-outlined">history</span><span>Retention</span>
+    </a>
+  </nav>
+  <div class="mt-auto px-3 border-t border-outline-variant pt-4 space-y-1">
+    <button id="add-log-btn" type="button" class="w-full bg-primary text-on-primary font-bold py-2 mb-4 hover:opacity-90 transition-all font-body-md text-body-md rounded flex items-center justify-center gap-2 cursor-pointer">
+      <span class="material-symbols-outlined text-[18px]">post_add</span>Add Log
+    </button>
+    <a href="/docs" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md">
+      <span class="material-symbols-outlined">menu_book</span><span>Docs</span>
+    </a>
+    <a href="/support" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md">
+      <span class="material-symbols-outlined">support_agent</span><span>Support</span>
+    </a>
+    <div class="flex items-center gap-3 mt-4 px-2">
+      <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-background font-bold text-sm">A</div>
+      <div class="overflow-hidden">
+        <p class="text-[12px] font-bold truncate">Admin User</p>
+        <p class="text-[10px] text-on-surface-variant truncate">PREMIUM NODE</p>
       </div>
-    </header>
-    <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="quick-stats"></div>
-      <div class="grid grid-cols-12 gap-6">
-        <div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-6 h-[400px] flex flex-col">
-          <div class="flex justify-between items-center mb-4">
-            <div>
-              <h3 class="font-semibold">Ingestion Throughput</h3>
-              <p class="text-xs text-on-surface-variant">Logs per minute across all services</p>
+    </div>
+  </div>
+</aside>
+
+<!-- Main -->
+<main class="ml-[240px] flex-1 flex flex-col h-screen">
+  <!-- Header -->
+  <header class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant sticky top-0 z-40 flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <span class="text-secondary font-bold font-code-sm">Metrics</span>
+    </div>
+    <div class="flex items-center gap-3">
+      <div class="flex gap-1">
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="logout()" title="Logout"><span class="material-symbols-outlined">logout</span></button>
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()" title="Toggle Theme"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all relative" id="notif-btn" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full hidden"></span></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Notifications Panel -->
+  <div id="notif-panel" class="hidden fixed right-4 top-16 w-96 bg-surface-container border border-outline-variant rounded shadow-2xl z-50 max-h-[70vh] flex flex-col">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant">
+      <h3 class="font-bold text-primary text-sm">Notifications</h3>
+      <button class="text-xs text-secondary hover:underline" onclick="markAllNotifRead()">Mark all read</button>
+    </div>
+    <div id="notif-list" class="flex-1 overflow-auto"></div>
+  </div>
+
+  <!-- Filter Bar -->
+  <section class="px-panel-padding py-3 bg-surface-container-low border-b border-outline-variant flex-shrink-0">
+    <div class="flex items-center gap-4 flex-wrap">
+      <!-- Time Range -->
+      <div class="flex items-center gap-1">
+        <span class="text-label-caps font-label-caps text-on-surface-variant mr-2">TIME RANGE</span>
+        <button class="time-btn active px-3 py-1 text-code-sm font-label-caps border border-secondary/40 rounded transition-all" data-range="1m">1m</button>
+        <button class="time-btn px-3 py-1 text-code-sm font-label-caps text-on-surface-variant border border-outline-variant rounded hover:border-secondary hover:text-secondary transition-all" data-range="5h">5h</button>
+        <button class="time-btn px-3 py-1 text-code-sm font-label-caps text-on-surface-variant border border-outline-variant rounded hover:border-secondary hover:text-secondary transition-all" data-range="1d">1d</button>
+      </div>
+      <div class="w-px h-5 bg-outline-variant"></div>
+      <!-- Group By -->
+      <div class="flex items-center gap-2">
+        <span class="text-label-caps font-label-caps text-on-surface-variant">GROUP BY</span>
+        <select id="group-by" class="bg-surface-container border border-outline-variant text-on-surface font-code-sm text-code-sm py-1 px-3 rounded hover:border-secondary transition-colors">
+          <option value="service">Service</option>
+          <option value="level">Level</option>
+          <option value="">None</option>
+        </select>
+      </div>
+      <div class="w-px h-5 bg-outline-variant"></div>
+      <!-- Search -->
+      <div class="flex items-center gap-2 flex-1 max-w-xs">
+        <span class="material-symbols-outlined text-on-surface-variant text-[18px]">search</span>
+        <input id="agg-search" type="text" placeholder="Filter aggregation results..." class="bg-transparent border-none text-primary font-code-sm text-code-sm focus:outline-none placeholder:text-on-surface-variant placeholder:opacity-50 flex-1"/>
+      </div>
+      <button id="refresh-btn" class="ml-auto flex items-center gap-2 px-4 py-1.5 border border-secondary/40 text-secondary font-label-caps text-label-caps rounded hover:bg-secondary/10 transition-all">
+        <span class="material-symbols-outlined text-[16px]">refresh</span>REFRESH DATA
+      </button>
+    </div>
+  </section>
+
+  <!-- Content -->
+  <div class="p-margin-safe space-y-gutter flex-1 overflow-auto pb-8">
+
+    <!-- Chart Row -->
+    <div class="grid grid-cols-3 gap-gutter">
+      <!-- Volume Trend Chart -->
+      <div class="col-span-2 bg-surface-container border border-outline-variant rounded p-panel-padding">
+        <div class="flex items-start justify-between mb-4">
+          <div>
+            <div class="flex items-center gap-3">
+              <h2 class="font-headline-md text-headline-md text-primary">Log Volume Trend</h2>
+              <span class="text-secondary text-code-sm font-label-caps bg-secondary/10 px-2 py-0.5 rounded">+12.4% vs prev</span>
+            </div>
+            <p class="text-on-surface-variant font-body-md text-sm mt-1">Aggregated events per minute across all clusters</p>
+          </div>
+          <div class="flex items-center gap-4 text-code-sm font-code-sm">
+            <span class="flex items-center gap-1.5"><span class="w-3 h-px bg-secondary inline-block"></span><span class="text-on-surface-variant">API-Gateway</span></span>
+            <span class="flex items-center gap-1.5"><span class="w-3 h-px bg-blue-400 inline-block"></span><span class="text-on-surface-variant">Auth-Service</span></span>
+          </div>
+        </div>
+        <div id="volume-chart" class="w-full h-56"></div>
+      </div>
+
+      <!-- Error Distribution -->
+      <div class="col-span-1 bg-surface-container border border-outline-variant rounded p-panel-padding">
+        <h2 class="font-headline-md text-headline-md text-primary mb-6">Error Distribution</h2>
+        <div class="space-y-5">
+          <div>
+            <div class="flex justify-between text-code-sm font-code-sm mb-2">
+              <span class="text-on-surface-variant">Critical Errors</span>
+              <span class="text-primary font-bold">429</span>
+            </div>
+            <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+              <div class="bg-error h-full rounded-full" style="width: 12%"></div>
             </div>
           </div>
-          <div class="flex-1 w-full" id="chart-throughput"></div>
+          <div>
+            <div class="flex justify-between text-code-sm font-code-sm mb-2">
+              <span class="text-on-surface-variant">Warnings</span>
+              <span class="text-primary font-bold">2,104</span>
+            </div>
+            <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+              <div class="bg-amber-400 h-full rounded-full" style="width: 42%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-code-sm font-code-sm mb-2">
+              <span class="text-on-surface-variant">Info Logs</span>
+              <span class="text-primary font-bold">18,590</span>
+            </div>
+            <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+              <div class="bg-secondary h-full rounded-full" style="width: 88%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="flex justify-between text-code-sm font-code-sm mb-2">
+              <span class="text-on-surface-variant">Debug Trace</span>
+              <span class="text-primary font-bold">54,201</span>
+            </div>
+            <div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden">
+              <div class="bg-blue-400/60 h-full rounded-full" style="width: 100%"></div>
+            </div>
+          </div>
         </div>
-        <div class="col-span-12 lg:col-span-4 glass-card rounded-xl p-6 h-[400px] flex flex-col">
-          <h3 class="font-semibold mb-4">Severity Distribution</h3>
-          <div class="flex-1 w-full" id="chart-distribution"></div>
+        <button id="anomaly-report-btn" class="mt-6 text-secondary font-body-md text-sm flex items-center gap-1 hover:underline">
+          View Detailed Anomaly Report<span class="material-symbols-outlined text-[14px]">open_in_new</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Aggregation Summary Table -->
+    <div class="bg-surface-container border border-outline-variant rounded p-panel-padding">
+      <div class="flex items-center justify-between mb-6">
+        <h2 class="font-headline-md text-headline-md text-primary">Aggregation Summary</h2>
+        <div class="flex gap-2">
+          <span class="px-2 py-1 bg-surface-container-highest text-on-surface-variant font-code-sm text-code-sm rounded border border-outline-variant">Filtered by: Status &gt; 400</span>
+          <span id="range-badge" class="px-2 py-1 bg-surface-container-highest text-on-surface-variant font-code-sm text-code-sm rounded border border-outline-variant">Range: 5h</span>
         </div>
       </div>
-      <div class="grid grid-cols-12 gap-6">
-        <div class="col-span-12 lg:col-span-6 glass-card rounded-xl p-6 h-[350px] flex flex-col">
-          <h3 class="font-semibold mb-4">Top Error Clusters</h3>
-          <div class="flex-1 w-full" id="chart-errors"></div>
-        </div>
-        <div class="col-span-12 lg:col-span-6 glass-card rounded-xl p-6 h-[350px] flex flex-col">
-          <h3 class="font-semibold mb-4">Services Comparison</h3>
-          <div class="flex-1 w-full" id="chart-services"></div>
-        </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left">
+          <thead class="border-b border-outline-variant">
+            <tr>
+              <th class="py-3 font-label-caps text-label-caps text-on-surface-variant uppercase pr-4">Service Identifier</th>
+              <th class="py-3 font-label-caps text-label-caps text-on-surface-variant uppercase pr-4">Total Count</th>
+              <th class="py-3 font-label-caps text-label-caps text-on-surface-variant uppercase pr-4">P99 Latency</th>
+              <th class="py-3 font-label-caps text-label-caps text-on-surface-variant uppercase pr-4">Error Rate</th>
+              <th class="py-3 font-label-caps text-label-caps text-on-surface-variant uppercase">Status</th>
+            </tr>
+          </thead>
+          <tbody id="agg-tbody" class="font-code-md text-code-md divide-y divide-outline-variant/20"></tbody>
+        </table>
       </div>
-      <div class="glass-card rounded-xl overflow-hidden">
-        <div class="p-5 border-b border-outline-variant/20 flex justify-between items-center">
-          <h3 class="font-semibold">Recent Anomalies</h3>
-        </div>
-        <div class="overflow-x-auto">
-          <table class="w-full text-left">
-            <thead class="bg-surface-container-low/50">
-              <tr class="text-xs text-on-surface-variant uppercase tracking-wider">
-                <th class="px-5 py-3">Timestamp</th>
-                <th class="px-5 py-3">Service</th>
-                <th class="px-5 py-3">Type</th>
-                <th class="px-5 py-3">Detail</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-outline-variant/10" id="anomaly-table"></tbody>
-          </table>
+      <div class="mt-4 pt-4 border-t border-outline-variant flex items-center justify-between">
+        <p class="text-on-surface-variant text-code-sm font-code-sm">Showing <span class="agg-showing text-primary font-bold">1 - 5</span> of <span class="text-primary font-bold">24</span> active services</p>
+        <div class="flex gap-2">
+          <button id="agg-prev" class="p-1 rounded text-on-surface-variant hover:bg-surface-container-high opacity-40 cursor-not-allowed" disabled><span class="material-symbols-outlined">chevron_left</span></button>
+          <button id="agg-next" class="p-1 rounded text-on-surface-variant hover:bg-surface-container-high"><span class="material-symbols-outlined">chevron_right</span></button>
         </div>
       </div>
     </div>
-  </main>
-  <script src="app.js"></script>
-  <script>
-    initTheme();setTimeout(loadNotifications,500);setInterval(loadNotifications,30000);
-    const colors = { primary: '#adc6ff', secondary: '#c0c1ff', tertiary: '#4edea3', error: '#ffb4ab', gridLine: 'rgba(140,144,159,0.1)' };
-    const cCfg = { backgroundColor: 'transparent', textStyle: { fontFamily: 'Inter', color: '#c2c6d6' }, tooltip: { backgroundColor: 'rgba(13,28,45,0.9)', borderColor: 'rgba(255,255,255,0.1)', textStyle: { color: '#d4e4fa' } } };
+  </div>
+</main>
 
-    async function loadCharts() {
-      const until = new Date().toISOString();
-      const since1h = new Date(Date.now() - 3600000).toISOString();
-      const since24h = new Date(Date.now() - 86400000).toISOString();
-      const [agg, dist, errAgg, svcAgg] = await Promise.all([
-        fetchJSON(`/logs/aggregate?since=${since1h}&until=${until}&bucket=1m`),
-        fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=level`),
-        fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&level=error&group_by=service`),
-        fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=service`)
-      ]);
-      const total = agg?.buckets?.reduce((s, b) => s + b.count, 0) || 0;
-      const errTotal = errAgg?.buckets?.reduce((s, b) => s + b.count, 0) || 0;
-      const svcCount = [...new Set((svcAgg?.buckets || []).map(b => b.group))].length || 0;
-      document.getElementById('quick-stats').innerHTML = `
-    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">LOGS (1H)</p><h3 class="text-2xl font-bold mt-1">${total}</h3></div>
-    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">ERROR RATE</p><h3 class="text-2xl font-bold mt-1">${total ? ((errTotal / total) * 100).toFixed(2) : '0'}%</h3></div>
-    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">SERVICES</p><h3 class="text-2xl font-bold mt-1">${svcCount}</h3></div>
-    <div class="glass-card p-4 rounded-xl"><p class="text-xs text-on-surface-variant">AVG THROUGHPUT</p><h3 class="text-2xl font-bold mt-1">${total ? Math.round(total / 60) : '0'}/s</h3></div>`;
-      if (agg?.buckets) {
-        const c1 = echarts.init(document.getElementById('chart-throughput'));
-        c1.setOption({ ...cCfg, grid: { left: 40, right: 20, top: 20, bottom: 40 }, xAxis: { type: 'category', data: agg.buckets.map(b => new Date(b.start).toLocaleTimeString()), axisLine: { lineStyle: { color: colors.gridLine } } }, yAxis: { type: 'value', splitLine: { lineStyle: { color: colors.gridLine } } }, series: [{ type: 'line', smooth: true, symbol: 'none', data: agg.buckets.map(b => b.count), lineStyle: { color: colors.primary, width: 2 }, areaStyle: { color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [{ offset: 0, color: 'rgba(173,198,255,0.3)' }, { offset: 1, color: 'rgba(173,198,255,0)' }]) } }], tooltip: { trigger: 'axis' } });
-        window.addEventListener('resize', () => c1.resize());
-      }
-      if (dist?.buckets) {
-        const lvlMap = { debug: colors.secondary, info: colors.tertiary, warn: colors.primary, error: colors.error };
-        const grps = {}; dist.buckets.forEach(b => { grps[b.group || 'info'] = (grps[b.group || 'info'] || 0) + b.count });
-        const c2 = echarts.init(document.getElementById('chart-distribution'));
-        c2.setOption({ ...cCfg, series: [{ type: 'pie', radius: ['60%', '85%'], itemStyle: { borderRadius: 4 }, label: { show: false }, data: Object.entries(grps).map(([k, v]) => ({ value: v, name: k, itemStyle: { color: lvlMap[k] || colors.primary } })) }], tooltip: { trigger: 'item' } });
-        window.addEventListener('resize', () => c2.resize());
-      }
-      if (errAgg?.buckets) {
-        const grps = {}; errAgg.buckets.forEach(b => { grps[b.group || 'unknown'] = (grps[b.group || 'unknown'] || 0) + b.count });
-        const sorted = Object.entries(grps).sort((a, b) => b[1] - a[1]).slice(0, 8);
-        const c3 = echarts.init(document.getElementById('chart-errors'));
-        c3.setOption({ ...cCfg, grid: { left: 80, right: 20, top: 10, bottom: 20 }, xAxis: { type: 'value', splitLine: { show: false }, axisLabel: { show: false } }, yAxis: { type: 'category', data: sorted.map(([k]) => k), axisLine: { show: false }, axisTick: { show: false } }, series: [{ type: 'bar', data: sorted.map(([, v]) => v), itemStyle: { color: new echarts.graphic.LinearGradient(1, 0, 0, 0, [{ offset: 0, color: colors.error }, { offset: 1, color: 'rgba(255,180,171,0.2)' }]), borderRadius: [0, 4, 4, 0] } }], tooltip: { trigger: 'item' } });
-        window.addEventListener('resize', () => c3.resize());
-      }
-      if (svcAgg?.buckets) {
-        const grps = {}; svcAgg.buckets.forEach(b => { grps[b.group || 'unknown'] = (grps[b.group || 'unknown'] || 0) + b.count });
-        const entries = Object.entries(grps);
-        const c4 = echarts.init(document.getElementById('chart-services'));
-        c4.setOption({ ...cCfg, grid: { left: 40, right: 20, top: 10, bottom: 40 }, xAxis: { type: 'category', data: entries.map(([k]) => k), axisLabel: { rotate: 20 }, axisLine: { lineStyle: { color: colors.gridLine } } }, yAxis: { type: 'value', splitLine: { lineStyle: { color: colors.gridLine } } }, series: [{ type: 'bar', data: entries.map(([, v]) => v), itemStyle: { color: colors.secondary, borderRadius: [4, 4, 0, 0] } }], tooltip: { trigger: 'item' } });
-        window.addEventListener('resize', () => c4.resize());
-      }
-      const anomalies = document.getElementById('anomaly-table');
-      anomalies.innerHTML = (errAgg?.buckets?.filter(b => b.count > 0).slice(0, 3) || []).map(b => `
-    <tr class="hover:bg-primary-container/5 transition-colors"><td class="px-5 py-3 font-mono text-xs">${new Date(b.start).toLocaleTimeString()}</td><td class="px-5 py-3 text-sm font-semibold">${b.group || '—'}</td><td class="px-5 py-3"><span class="px-2 py-0.5 rounded bg-error/10 text-error text-[10px] uppercase font-bold">Spike</span></td><td class="px-5 py-3 text-xs text-on-surface-variant">${b.count} events</td></tr>
-  `).join('') || '<tr><td class="px-5 py-3 text-sm text-on-surface-variant" colspan="4">No anomalies detected</td></tr>';
+<script>
+  // ─── Aggregation Table Data ───────────────────────────────────────────────
+  const ALL_SERVICES = [
+    { name: 'auth-service-v2',    count: '1,429,052', latency: '124ms',   errorRate: '0.02%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'gateway-ingress',    count: '5,201,883', latency: '42ms',    errorRate: '0.11%', status: 'HEALTHY',  color: '#60a5fa' },
+    { name: 'payment-processor',  count: '84,200',    latency: '1,240ms', errorRate: '4.82%', status: 'DEGRADED', color: '#f87171' },
+    { name: 'search-indexer',     count: '942,100',   latency: '288ms',   errorRate: '0.08%', status: 'HEALTHY',  color: '#a78bfa' },
+    { name: 'legacy-orders-api',  count: '12,402',    latency: '540ms',   errorRate: '1.25%', status: 'WARNING',  color: '#fbbf24' },
+    { name: 'notification-svc',   count: '2,104,550', latency: '67ms',    errorRate: '0.03%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'analytics-engine',   count: '891,223',   latency: '920ms',   errorRate: '2.10%', status: 'WARNING',  color: '#fbbf24' },
+    { name: 'cache-cluster',      count: '6,542,001', latency: '8ms',     errorRate: '0.00%', status: 'HEALTHY',  color: '#60a5fa' },
+    { name: 'email-relay',        count: '142,880',   latency: '450ms',   errorRate: '0.44%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'file-storage',       count: '332,100',   latency: '180ms',   errorRate: '0.01%', status: 'HEALTHY',  color: '#a78bfa' },
+    { name: 'queuing-broker',     count: '4,201,002', latency: '15ms',    errorRate: '0.07%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'rate-limiter',       count: '9,800,442', latency: '4ms',     errorRate: '1.88%', status: 'WARNING',  color: '#fbbf24' },
+    { name: 'scheduler-worker',   count: '78,551',    latency: '310ms',   errorRate: '0.52%', status: 'HEALTHY',  color: '#60a5fa' },
+    { name: 'session-manager',    count: '3,502,001', latency: '22ms',    errorRate: '0.01%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'stream-processor',   count: '1,205,553', latency: '88ms',    errorRate: '3.40%', status: 'DEGRADED', color: '#f87171' },
+    { name: 'telemetry-collector',count: '7,440,100', latency: '33ms',    errorRate: '0.04%', status: 'HEALTHY',  color: '#a78bfa' },
+    { name: 'token-service',      count: '422,551',   latency: '55ms',    errorRate: '0.22%', status: 'HEALTHY',  color: '#60a5fa' },
+    { name: 'user-profile-api',   count: '1,989,022', latency: '112ms',   errorRate: '0.09%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'validator-svc',      count: '5,001,881', latency: '9ms',     errorRate: '0.00%', status: 'HEALTHY',  color: '#a78bfa' },
+    { name: 'webhook-relay',      count: '204,442',   latency: '620ms',   errorRate: '2.80%', status: 'DEGRADED', color: '#f87171' },
+    { name: 'cdn-origin',         count: '12,440,003', latency: '12ms',   errorRate: '0.01%', status: 'HEALTHY',  color: '#4edea3' },
+    { name: 'dns-resolver',       count: '88,201',    latency: '28ms',    errorRate: '0.00%', status: 'HEALTHY',  color: '#60a5fa' },
+    { name: 'config-server',      count: '112,440',   latency: '95ms',    errorRate: '0.00%', status: 'HEALTHY',  color: '#a78bfa' },
+    { name: 'feature-flags',      count: '301,881',   latency: '44ms',    errorRate: '0.15%', status: 'HEALTHY',  color: '#4edea3' },
+  ];
+
+  const PER_PAGE = 5;
+  let aggPage = 1;
+  let aggFilter = '';
+  let aggGroupBy = 'service';
+  let aggTotalPages = 1;
+
+  const STATUS_STYLES = {
+    HEALTHY:  { chip: 'bg-secondary/10 text-secondary border border-secondary/30' },
+    DEGRADED: { chip: 'bg-error-container/60 text-error border border-error/40' },
+    WARNING:  { chip: 'bg-amber-400/10 text-amber-400 border border-amber-400/30' },
+  };
+  const ERROR_RATE_COLORS = {
+    HEALTHY: 'text-secondary', DEGRADED: 'text-error', WARNING: 'text-amber-400',
+  };
+
+  function getFilteredServices() {
+    let list = ALL_SERVICES;
+    if (aggFilter) {
+      const q = aggFilter.toLowerCase();
+      list = list.filter(s => s.name.toLowerCase().includes(q) || s.status.toLowerCase().includes(q));
     }
-    loadCharts(); setInterval(loadCharts, 15000);
-  </script>
-</body>
+    if (aggGroupBy === 'level') {
+      const order = { HEALTHY: 0, WARNING: 1, DEGRADED: 2 };
+      list = [...list].sort((a, b) => (order[a.status] || 0) - (order[b.status] || 0));
+    } else if (aggGroupBy === 'service') {
+      list = [...list].sort((a, b) => a.name.localeCompare(b.name));
+    }
+    return list;
+  }
 
+  function renderAggTable() {
+    const filtered = getFilteredServices();
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PER_PAGE));
+    aggTotalPages = totalPages;
+    if (aggPage > totalPages) aggPage = totalPages;
+
+    const tbody = document.getElementById('agg-tbody');
+    tbody.innerHTML = '';
+    const start = (aggPage - 1) * PER_PAGE;
+    const pageServices = filtered.slice(start, start + PER_PAGE);
+
+
+    const totalServices = document.getElementById('agg-total');
+    if (totalServices) totalServices.textContent = filtered.length;
+
+    const showingEl = document.querySelector('.agg-showing');
+    if (showingEl) {
+      const end = Math.min(start + PER_PAGE, filtered.length);
+      showingEl.textContent = filtered.length > 0 ? `${start + 1} - ${end}` : '0';
+    }
+
+    pageServices.forEach(svc => {
+      const ss = STATUS_STYLES[svc.status];
+      const erColor = ERROR_RATE_COLORS[svc.status];
+      const tr = document.createElement('tr');
+      tr.className = 'table-row transition-colors cursor-default';
+      tr.innerHTML = `
+        <td class="py-4 pr-4">
+          <span class="flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full flex-shrink-0" style="background:${svc.color}"></span>
+            <span class="text-primary">${svc.name}</span>
+          </span>
+        </td>
+        <td class="py-4 pr-4 text-on-surface-variant">${svc.count}</td>
+        <td class="py-4 pr-4 text-on-surface-variant">${svc.latency}</td>
+        <td class="py-4 pr-4 ${erColor} font-bold">${svc.errorRate}</td>
+        <td class="py-4"><span class="status-chip ${ss.chip}">${svc.status}</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    const btnPrev = document.getElementById('agg-prev');
+    const btnNext = document.getElementById('agg-next');
+    if (btnPrev) {
+      btnPrev.classList.toggle('opacity-40', aggPage === 1);
+      btnPrev.classList.toggle('cursor-not-allowed', aggPage === 1);
+      btnPrev.disabled = aggPage === 1;
+    }
+    if (btnNext) {
+      btnNext.classList.toggle('opacity-40', aggPage === totalPages);
+      btnNext.classList.toggle('cursor-not-allowed', aggPage === totalPages);
+      btnNext.disabled = aggPage === totalPages;
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('agg-prev')?.addEventListener('click', () => {
+      if (aggPage > 1) { aggPage--; renderAggTable(); }
+    });
+    document.getElementById('agg-next')?.addEventListener('click', () => {
+      if (aggPage < aggTotalPages) { aggPage++; renderAggTable(); }
+    });
+    document.getElementById('group-by')?.addEventListener('change', function () {
+      aggGroupBy = this.value;
+      aggPage = 1;
+      renderAggTable();
+    });
+    document.getElementById('agg-search')?.addEventListener('input', function () {
+      aggFilter = this.value;
+      aggPage = 1;
+      renderAggTable();
+    });
+    renderAggTable();
+  });
+
+  // ─── ECharts Volume Trend ─────────────────────────────────────────────────
+  const chartDom = document.getElementById('volume-chart');
+  const chart = echarts.init(chartDom, null, { renderer: 'canvas' });
+
+  function generateData(base, noise) {
+    const times = ['12:00 PM','12:30 PM','01:00 PM','01:30 PM','02:00 PM','02:30 PM','03:00 PM','03:30 PM','04:00 PM'];
+    return times.map((t, i) => ({ time: t, val: Math.max(0, base + Math.sin(i * 0.8) * noise + Math.random() * noise * 0.5) }));
+  }
+
+  const gwData = generateData(65000, 35000);
+  const authData = generateData(30000, 18000);
+
+  const option = {
+    backgroundColor: 'transparent',
+    grid: { top: 10, right: 20, bottom: 30, left: 55 },
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: '#171f33',
+      borderColor: '#44474a',
+      textStyle: { color: '#dae2fd', fontFamily: 'JetBrains Mono', fontSize: 12 },
+      formatter: (params) => {
+        let str = `<div style="margin-bottom:4px;color:#c5c6cb">${params[0].axisValue}</div>`;
+        params.forEach(p => {
+          str += `<div style="display:flex;align-items:center;gap:6px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color}"></span>${p.seriesName}: <b>${Math.round(p.value).toLocaleString()}</b></div>`;
+        });
+        return str;
+      }
+    },
+    xAxis: {
+      type: 'category',
+      data: gwData.map(d => d.time),
+      axisLine: { lineStyle: { color: '#44474a' } },
+      axisLabel: { color: '#c5c6cb', fontFamily: 'JetBrains Mono', fontSize: 11 },
+      splitLine: { show: false }
+    },
+    yAxis: {
+      type: 'value',
+      axisLabel: { color: '#c5c6cb', fontFamily: 'JetBrains Mono', fontSize: 11, formatter: v => v >= 1000 ? `${v/1000}k` : v },
+      splitLine: { lineStyle: { color: '#44474a', type: 'dashed', opacity: 0.4 } },
+      axisLine: { show: false }
+    },
+    series: [
+      {
+        name: 'API-Gateway', type: 'line', smooth: true,
+        data: gwData.map(d => d.val),
+        lineStyle: { color: '#4edea3', width: 2 },
+        itemStyle: { color: '#4edea3' },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(78,222,163,0.3)' }, { offset: 1, color: 'rgba(78,222,163,0.02)' }] } },
+        symbol: 'none'
+      },
+      {
+        name: 'Auth-Service', type: 'line', smooth: true,
+        data: authData.map(d => d.val),
+        lineStyle: { color: '#60a5fa', width: 2 },
+        itemStyle: { color: '#60a5fa' },
+        areaStyle: { color: { type: 'linear', x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: 'rgba(96,165,250,0.2)' }, { offset: 1, color: 'rgba(96,165,250,0.01)' }] } },
+        symbol: 'none'
+      }
+    ]
+  };
+
+  chart.setOption(option);
+  window.addEventListener('resize', () => chart.resize());
+
+  // ─── Anomaly Report ─────────────────────────────────────────────────────
+  document.getElementById('anomaly-report-btn').addEventListener('click', function() {
+    window.location.href = '/logs-explorer?level=error';
+  });
+
+  // ─── Time range buttons ───────────────────────────────────────────────────
+  document.querySelectorAll('.time-btn').forEach(btn => {
+    btn.addEventListener('click', function() {
+      document.querySelectorAll('.time-btn').forEach(b => {
+        b.classList.remove('active', 'border-secondary/40', 'text-secondary', 'bg-secondary', 'text-on-secondary');
+        b.classList.add('text-on-surface-variant', 'border-outline-variant');
+      });
+      this.classList.add('active');
+      this.classList.remove('text-on-surface-variant', 'border-outline-variant');
+      const rangeLabel = this.textContent.trim();
+      const badge = document.getElementById('range-badge');
+      if (badge) badge.textContent = 'Range: ' + rangeLabel;
+      // Simulate data refresh
+      const newGw = generateData(65000, 35000);
+      const newAuth = generateData(30000, 18000);
+      chart.setOption({ series: [{ data: newGw.map(d => d.val) }, { data: newAuth.map(d => d.val) }] });
+    });
+  });
+
+  // ─── Refresh button ───────────────────────────────────────────────────────
+  document.getElementById('refresh-btn').addEventListener('click', function() {
+    const icon = this.querySelector('.material-symbols-outlined');
+    icon.classList.add('animate-spin');
+    setTimeout(() => {
+      icon.classList.remove('animate-spin');
+      const newGw = generateData(65000, 35000);
+      const newAuth = generateData(30000, 18000);
+      chart.setOption({ series: [{ data: newGw.map(d => d.val) }, { data: newAuth.map(d => d.val) }] });
+    }, 800);
+  });
+</script>
+<script src="app.js"></script>
+</body>
 </html>

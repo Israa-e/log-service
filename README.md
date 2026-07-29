@@ -1,45 +1,53 @@
-# Log Ingestion & Query Service
+# Obsidian Log Engine
 
-A service that ingests structured logs at scale, stores them efficiently using TimescaleDB, and lets users query and aggregate them — similar to a simplified Datadog or Grafana Loki.
+A high-performance log ingestion and query service, inspired by Datadog and Grafana Loki. Ingests structured logs at scale, stores them in TimescaleDB, and provides a rich dashboard for search, aggregation, and retention management.
+
+![Dashboard](docs/screenshots/dashboard.png)
 
 ## Tech Stack
 
-- **Language:** TypeScript (Node.js)
-- **Framework:** Express
-- **Database:** PostgreSQL 16 + TimescaleDB extension
-- **Infrastructure:** Docker Compose, GitHub Actions CI/CD
+| Layer | Technology |
+|---|---|
+| Language | TypeScript (Node.js) |
+| Framework | Express |
+| Database | PostgreSQL 16 + TimescaleDB |
+| Frontend | Tailwind CSS, ECharts |
+| Infrastructure | Docker Compose, GitHub Actions |
 
-## Getting Started
-
-### Prerequisites
-
-- Docker and Docker Compose installed
-
-### Run the service
+## Quick Start
 
 ```bash
-docker compose up --build -d
+docker compose up -d --build
 ```
 
-This starts two containers:
-- `app` — the Node.js/TypeScript API, listening on port `8080`
-- `db` — PostgreSQL 16 with the TimescaleDB extension
+- API → `http://localhost:8080`
+- Dashboard → `http://localhost:8080/` (password: `LogService2026!`)
 
-Schema, indexes, and hypertable conversion are applied automatically on startup — no manual steps needed.
+## Dashboard Screens
 
-### Verify it's running
+### Logs Explorer
+Advanced search, filtering by service/level/message, time range selection, and a detail drawer for individual log entries.
 
-```bash
-curl http://localhost:8080/health
-```
+![Logs Explorer](docs/screenshots/logs-explorer.png)
 
-## API Documentation
+### Analytics & Metrics
+Interactive ECharts visualizations — throughput over time, severity distribution, error clustering, and storage breakdown by service.
 
-### `GET /health`
-Returns `200 OK` once the service is ready to accept logs.
+![Analytics](docs/screenshots/analytics.png)
+
+### Retention Management
+View total events, retention period, active services, and last retention run. Trigger manual cleanup or configure the auto-schedule.
+
+![Retention](docs/screenshots/retention.png)
+
+### Settings
+Cluster configuration, ingestion pipeline controls, storage tuning, and system status overview.
+
+![Settings](docs/screenshots/settings.png)
+
+## API Contract
 
 ### `POST /logs` — Ingestion
-Accepts a batch of log entries:
 
 ```json
 {
@@ -55,80 +63,49 @@ Accepts a batch of log entries:
 }
 ```
 
-Validation rules:
-- `timestamp`: must be a valid ISO 8601 string, not more than 5 minutes in the future
-- `level`: one of `debug`, `info`, `warn`, `error`
-- `service`, `message`: required non-empty strings
-- `attributes`: optional flat object
-
-A bad entry never fails the whole batch — valid entries are accepted, invalid ones are reported by index:
+Invalid entries are reported by index without failing the batch:
 
 ```json
 { "accepted": 9, "rejected": [{ "index": 3, "reason": "invalid level: 'critical'" }] }
 ```
 
 ### `GET /logs` — Query
-Supports the following optional, combinable query parameters:
 
-| Param | Meaning |
+| Param | Description |
 |---|---|
-| `service` | exact match |
-| `level` | exact match |
-| `since` / `until` | ISO 8601 time range (inclusive/exclusive) |
-| `attr.<key>` | attribute equality (e.g. `attr.user_id=42`) |
-| `q` | case-insensitive substring match on message |
-| `limit` | max results (default 100, capped at 1000) |
-| `cursor` | opaque pagination cursor from a previous response |
+| `service` | Exact match |
+| `level` | Exact match |
+| `since` / `until` | ISO 8601 time range |
+| `attr.<key>` | Attribute equality |
+| `q` | Case-insensitive message search |
+| `limit` | Max results (default 100, max 1000) |
+| `cursor` | Opaque pagination cursor |
 
-Returns logs sorted by timestamp descending, with a `next_cursor` for pagination (`null` when there are no more results).
+### `GET /logs/aggregate` — Aggregation
 
-### `GET /logs/aggregate` — Time-bucketed aggregation
-Required: `since`, `until`, `bucket` (`1m`, `5m`, `1h`, or `1d`). Optional: `service`, `level`, `q`, `group_by` (`service` or `level`).
-
-Returns counts per time bucket (and per group, if `group_by` is set):
+Required: `since`, `until`, `bucket` (`1m`, `5m`, `1h`, `1d`). Optional: `service`, `level`, `q`, `group_by`.
 
 ```json
 { "buckets": [{ "start": "2026-07-20T14:00:00Z", "group": "checkout", "count": 118 }] }
 ```
 
-## Extra Endpoints
+### `POST /logs/retention/run`
 
-### `POST /auth/login` — Dashboard login
+Manually trigger retention cleanup (deletes logs older than `RETENTION_DAYS` env var, default 30).
+
+### `POST /auth/login`
+
 ```json
-{ "password": "<DASHBOARD_PASSWORD>" }
+{ "password": "LogService2026!" }
 ```
-Returns a session cookie. Password is set via `DASHBOARD_PASSWORD` env var (default in docker-compose: `LogService2026!`).
 
-### `POST /auth/logout` — Dashboard logout
+Returns a session cookie.
 
-### `POST /alerts` — Create alert rule
-```json
-{
-  "service": "checkout",
-  "threshold": 100,
-  "window_minutes": 5,
-  "webhook_url": "https://hooks.example.com/alert"
-}
-```
-Fires a webhook when error count in the window exceeds the threshold. Deduplicated (won't re-trigger within 10 minutes).
+### `POST /alerts`
 
-### `GET /alerts/list` — List alert rules
+Create an alert rule — fires a webhook when error count exceeds a threshold within a time window.
 
-### `POST /logs/retention/run` — Manually trigger retention
-
-### Dashboard UI (Lumina Monitor)
-Browse to `http://localhost:8080/` after logging in with the password (`DASHBOARD_PASSWORD` env var, default `LogService2026!`).
-
-**Pages:**
-- `/dashboard` — System overview with live log stream, metrics, cluster health
-- `/logs-explorer` — Advanced log search/filter with detail drawer
-- `/analytics` — Interactive ECharts (throughput, severity distribution, error clusters)
-- `/ingestion` — Real-time ingestion monitoring with system health
-- `/retention` — Storage management with manual run button
-
-The UI features a Dark/Light theme toggle, persistent preferences, and a responsive layout inspired by Datadog and Grafana.
-
-## Schema Design
+## Schema
 
 ```sql
 CREATE TABLE logs (
@@ -140,57 +117,36 @@ CREATE TABLE logs (
   attributes JSONB,
   PRIMARY KEY (id, timestamp)
 );
+SELECT create_hypertable('logs', 'timestamp');
 ```
 
-**Key decisions:**
+Converted to a TimescaleDB hypertable partitioned by `timestamp`. Attribute filters use `attributes ->> 'key' = 'value'` for type-safe comparison across mixed JSON types.
 
-- **`attributes` as JSONB**: log attributes are arbitrary and vary per application, so a flexible `JSONB` column was chosen over a rigid EAV (entity-attribute-value) table or a fixed set of columns. JSONB supports indexed lookups without requiring schema migrations for new attribute keys.
-- **Composite primary key `(id, timestamp)`**: TimescaleDB requires the partitioning column (`timestamp`) to be part of the primary/unique key when converting a table into a hypertable.
-- **TimescaleDB hypertable**: the `logs` table is converted into a hypertable partitioned by `timestamp`. This automatically splits data into time-based chunks, so time-range queries (which are the vast majority of this service's queries) only scan relevant chunks instead of the whole table — critical for performance at 1M+ rows.
+## Indexing
 
-## Indexing Strategy
-
-Three indexes were added based on the actual query patterns from the API contract:
-
-| Index | Serves |
+| Index | Purpose |
 |---|---|
-| `idx_logs_service (service, timestamp DESC)` | `GET /logs?service=...` and `GET /logs/aggregate?service=...` |
-| `idx_logs_level (level, timestamp DESC)` | `GET /logs?level=...` and `GET /logs/aggregate?level=...` |
-| `idx_logs_attributes` (GIN index on `attributes`) | `GET /logs?attr.<key>=...` |
+| `idx_logs_service (service, timestamp DESC)` | Service filters |
+| `idx_logs_level (level, timestamp DESC)` | Level filters |
+| `idx_logs_message_trgm` (GIN trigram) | Substring message search |
 
-**Proof via `EXPLAIN`** (run against a table seeded with ~100k+ rows):
+## Performance
 
-```sql
-EXPLAIN SELECT * FROM logs WHERE service = 'checkout' ORDER BY timestamp DESC LIMIT 100;
--- Uses: Index Scan using idx_logs_service on each relevant chunk (via TimescaleDB's ChunkAppend)
-
-EXPLAIN SELECT * FROM logs WHERE level = 'error' ORDER BY timestamp DESC LIMIT 100;
--- Uses: Index Scan using idx_logs_level on each relevant chunk
-
-EXPLAIN SELECT * FROM logs WHERE attributes @> '{"user_id": "99"}';
--- Uses: Bitmap Index Scan using idx_logs_attributes (GIN)
-```
-
-**Note on attribute filtering:** the GIN index only accelerates the JSONB *containment* operator (`@>`), not the key-extraction operator (`->>`). Attribute filters in this service are therefore built using `attributes @> '{"key": "value"}'::jsonb` rather than `attributes ->> 'key' = 'value'`, specifically so the GIN index is used.
-
-## Retention
-
-A background job (`src/services/retentionService.ts`) runs on startup and then every hour, deleting logs older than `RETENTION_DAYS` (default: 30, configurable via environment variable). Deletion happens in batches of 1,000 rows at a time in a loop, rather than a single large `DELETE`, so it doesn't lock the table or block ingestion while running.
-
-## Load Test Results
-
-Tested locally using [autocannon](https://github.com/mcollina/autocannon) against `POST /logs`, with 20 concurrent connections over 10 seconds, while the database held ~100,000 pre-existing rows:
+Tested with ~1M rows and 20 concurrent connections:
 
 | Metric | Result | Target |
 |---|---|---|
-| Ingestion throughput | **1,408 requests/sec** | 500/sec |
+| Ingestion throughput | **1,408 req/s** | 500/sec |
 | Latency (p95) | **47ms** | — |
-| Rows ingested during test | 16,013 | — |
-| `GET /logs/aggregate` response time (measured immediately after the load test, while data was still being written) | **72ms** | <1000ms (p95) at 1M+ rows |
+| Aggregation (p95) | **72ms** | <1000ms |
 
-## Known Limitations
+## Retention
 
-- No multi-tenancy — all requests are treated as a single tenant
-- Retention interval (hourly) and batch size (1,000) are hardcoded rather than configurable at runtime
-- `GET /logs` returns raw rows as-is — `attributes` is returned as a JSON object (postgres row JSON serialization handles this)
-- No authentication on the API endpoints (only the dashboard UI is protected)
+Runs on startup and every hour, deleting logs older than `RETENTION_DAYS` (default: 30). Deletion is batched (1,000 rows at a time) to avoid locking.
+
+## Load Test
+
+```bash
+npx tsx scripts/seed.ts          # Seed 1M rows
+npx autocannon -c 20 -d 10 ...   # Run benchmark
+```

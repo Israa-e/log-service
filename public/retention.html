@@ -1,158 +1,247 @@
 <!DOCTYPE html>
 <html class="dark" lang="en">
-
 <head>
-  <meta charset="utf-8" />
-  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
-  <title>Lumina Logs — Retention</title>
-  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log — Retention</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="tailwind-config.js"></script>
-  <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap"
-    rel="stylesheet" />
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
-    rel="stylesheet" />
-  <link rel="stylesheet" href="styles.css">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+.policy-card { transition: box-shadow 0.2s, border-color 0.2s; }
+.policy-card:hover { box-shadow: 0 0 16px rgba(78,222,163,0.1); }
+</style>
 </head>
-
-<body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
-  <aside
-    class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
-    <div class="mb-6 px-2 flex items-center gap-3">
-      <div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span
-          class="material-symbols-outlined text-on-primary-container"
-          style="font-variation-settings:'FILL'1">monitoring</span></div>
-      <div>
-        <h1 class="text-lg font-bold text-primary">Lumina Logs</h1>
-        <p class="text-xs text-on-surface-variant">Observability</p>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+  <div class="px-panel-padding mb-8">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-on-primary"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">layers</span></div>
+      <div><h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary leading-tight">Obsidian Log</h1><p class="font-code-sm text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p></div>
+    </div>
+  </div>
+  <nav class="flex-1 space-y-1 px-3">
+    <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">terminal</span><span>Logs</span></a>
+    <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">analytics</span><span>Metrics</span></a>
+    <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-secondary font-bold bg-surface-container-highest transition-colors font-body-md text-body-md"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">history</span><span>Retention</span></a>
+  </nav>
+  <div class="mt-auto px-3 border-t border-outline-variant pt-4 space-y-1">
+    <button id="add-log-btn" type="button" class="w-full bg-primary text-on-primary font-bold py-2 mb-4 hover:opacity-90 transition-all font-body-md text-body-md rounded flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-[18px]">post_add</span>Add Log</button>
+    <button id="run-retention-btn" class="w-full border border-outline-variant text-on-surface hover:bg-surface-container-high font-bold py-2 mb-4 transition-all font-body-md text-body-md rounded flex items-center justify-center gap-2"><span class="material-symbols-outlined text-[18px]">play_arrow</span>Run Retention</button>
+    <a href="/docs" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">menu_book</span><span>Docs</span></a>
+    <a href="/support" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">support_agent</span><span>Support</span></a>
+  </div>
+</aside>
+<!-- Main Content -->
+<main class="ml-[240px] flex-1 flex flex-col h-screen">
+  <!-- TopAppBar -->
+  <header class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant sticky top-0 z-40 flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <span class="text-secondary font-bold font-code-sm">Retention</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <button id="export-csv-btn" class="px-4 py-1.5 border border-outline-variant text-on-surface-variant font-body-md text-body-md hover:text-primary transition-all">Export CSV</button>
+      <div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="logout()"><span class="material-symbols-outlined">logout</span></button>
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
       </div>
     </div>
-    <nav class="flex-1 space-y-1">
-      <a href="/dashboard"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">dashboard</span>Dashboard</a>
-      <a href="/logs-explorer"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
-      <a href="/analytics"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">analytics</span>Analytics</a>
-      <a href="/ingestion"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span
-          class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
-      <a href="/retention"
-        class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span
-          class="material-symbols-outlined" style="font-variation-settings:'FILL'1">storage</span>Retention</a>
-    </nav>
-    <div class="mt-auto pt-4 border-t border-outline-variant/20">
-      <div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span
-          class="material-symbols-outlined">check_circle</span>System Healthy</div>
-    </div>
-  </aside>
-  <main class="ml-64 flex-1 flex flex-col h-screen">
-    <header
-      class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
-      <h1 class="text-xl font-bold">Retention</h1>
-      <div class="flex items-center gap-3">
-        <div class="relative" id="notif-btn"><button class="p-2 rounded-full text-on-surface-variant hover:text-primary relative" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-[10px] font-bold text-white rounded-full flex items-center justify-center hidden">0</span></button><div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20 bg-surface-container-high/50"><h3 class="text-sm font-semibold">Notifications</h3><button class="text-xs text-primary hover:underline" onclick="markAllNotifRead()">Mark all read</button></div><div class="max-h-80 overflow-y-auto c-scroll" id="notif-list"><div class="px-4 py-8 text-center text-on-surface-variant text-sm">Loading...</div></div></div></div>
-        <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span
-            class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+  </header>
+  <!-- Content -->
+  <div class="p-margin-safe space-y-6 overflow-auto flex-1">
+    <!-- KPI Cards (live data) -->
+    <section class="grid grid-cols-4 gap-gutter">
+      <div class="p-panel-padding bg-surface-container border border-outline-variant rounded">
+        <p class="font-label-caps text-label-caps text-on-surface-variant">TOTAL EVENTS</p>
+        <p class="font-headline-md text-headline-md text-primary mt-1" id="kpi-total">—</p>
+        <p class="font-code-sm text-code-sm text-on-surface-variant mt-2" id="kpi-total-range">all time</p>
       </div>
-    </header>
-    <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
-      <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div class="glass-card p-5 rounded-xl">
-          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Retention Period</p>
-          <h3 class="text-2xl font-bold mt-2">90 Days</h3>
-        </div>
-        <div class="glass-card p-5 rounded-xl">
-          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Cleanup Status</p>
-          <div class="flex items-center gap-2 mt-2">
-            <h3 class="text-xl font-bold text-tertiary">Running</h3><span
-              class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
-          </div>
-        </div>
-        <div class="glass-card p-5 rounded-xl">
-          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Deleted Today</p>
-          <h3 class="text-2xl font-bold mt-2" id="deleted-today">—</h3>
-        </div>
-        <div class="glass-card p-5 rounded-xl">
-          <p class="text-xs text-on-surface-variant uppercase tracking-wider">Storage Used</p>
-          <h3 class="text-2xl font-bold mt-2" id="storage-used">—</h3>
-        </div>
+      <div class="p-panel-padding bg-surface-container border border-outline-variant rounded">
+        <p class="font-label-caps text-label-caps text-on-surface-variant">RETENTION PERIOD</p>
+        <p class="font-headline-md text-headline-md text-primary mt-1" id="kpi-retention-days">30</p>
+        <p class="font-code-sm text-code-sm text-on-surface-variant mt-2">days (env: RETENTION_DAYS)</p>
       </div>
-      <div class="glass-card rounded-xl p-6">
-        <h3 class="font-semibold mb-4">Storage Timeline</h3>
-        <div class="relative pt-8 pb-4">
-          <div class="absolute top-1/2 left-0 w-full h-px bg-outline-variant/30"></div>
-          <div class="flex justify-between relative">
-            <div class="text-center">
-              <div
-                class="w-12 h-12 rounded-full bg-primary flex items-center justify-center mx-auto shadow-lg shadow-primary/20 relative z-10">
-                <span class="material-symbols-outlined text-on-primary">bolt</span></div>
-              <p class="text-xs font-bold mt-2">Hot</p>
-              <p class="text-[10px] text-on-surface-variant">Days 1-7</p>
-            </div>
-            <div class="text-center">
-              <div
-                class="w-12 h-12 rounded-full bg-secondary-container flex items-center justify-center mx-auto relative z-10">
-                <span class="material-symbols-outlined text-on-secondary-container">ac_unit</span></div>
-              <p class="text-xs font-bold mt-2">Warm</p>
-              <p class="text-[10px] text-on-surface-variant">Days 8-30</p>
-            </div>
-            <div class="text-center">
-              <div
-                class="w-12 h-12 rounded-full bg-surface-container-highest flex items-center justify-center mx-auto relative z-10">
-                <span class="material-symbols-outlined text-on-surface-variant">archive</span></div>
-              <p class="text-xs font-bold mt-2">Cold</p>
-              <p class="text-[10px] text-on-surface-variant">Days 31-90</p>
-            </div>
-            <div class="text-center">
-              <div
-                class="w-12 h-12 rounded-full bg-error-container/30 flex items-center justify-center mx-auto border border-error/30 relative z-10">
-                <span class="material-symbols-outlined text-error">delete_sweep</span></div>
-              <p class="text-xs font-bold mt-2">Purge</p>
-              <p class="text-[10px] text-on-surface-variant">After 90d</p>
-            </div>
-          </div>
-        </div>
+      <div class="p-panel-padding bg-surface-container border border-outline-variant rounded">
+        <p class="font-label-caps text-label-caps text-on-surface-variant">SERVICES</p>
+        <p class="font-headline-md text-headline-md text-primary mt-1" id="kpi-services">—</p>
+        <p class="font-code-sm text-code-sm text-on-surface-variant mt-2">active services</p>
       </div>
-      <div class="glass-card rounded-xl p-6">
+      <div class="p-panel-padding bg-surface-container border border-outline-variant rounded">
+        <p class="font-label-caps text-label-caps text-on-surface-variant">LAST RETENTION</p>
+        <p class="font-headline-md text-headline-md text-primary mt-1" id="kpi-last-run">Never</p>
+        <p class="font-code-sm text-code-sm text-secondary mt-2" id="kpi-last-deleted"></p>
+      </div>
+    </section>
+    <!-- Main Grid: Log Volume Chart + Retention Info -->
+    <div class="grid grid-cols-12 gap-6">
+      <div class="col-span-8 bg-surface-container border border-outline-variant rounded p-panel-padding h-[360px] flex flex-col">
         <div class="flex justify-between items-center mb-4">
-          <h3 class="font-semibold">Retention Log</h3>
-          <button class="px-4 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110"
-            onclick="runRetention()">Run Now</button>
+          <h2 class="font-headline-md text-headline-md text-primary">Log Volume (7 days)</h2>
+          <span class="font-code-sm text-code-sm text-on-surface-variant" id="volume-subtitle">by day</span>
         </div>
-        <table class="w-full text-left">
-          <thead class="bg-surface-container-low/50">
-            <tr class="text-xs text-on-surface-variant uppercase tracking-wider">
-              <th class="px-4 py-3">Time</th>
-              <th class="px-4 py-3">Deleted</th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-outline-variant/10" id="retention-log"></tbody>
-        </table>
+        <div class="flex-1 w-full" id="chart-volume"></div>
+      </div>
+      <div class="col-span-4 bg-surface-container border border-outline-variant rounded p-panel-padding flex flex-col">
+        <h2 class="font-headline-md text-headline-md text-primary mb-4">Retention Policy</h2>
+        <div class="flex-1 space-y-4">
+          <div class="p-4 bg-surface-container-lowest border-l-4 border-secondary rounded border border-outline-variant">
+            <div class="flex justify-between items-start"><div><p class="text-primary font-bold font-body-md">Default TTL</p><p class="text-on-surface-variant text-sm mt-1">Auto-delete logs older than <span id="policy-days">30</span> days</p></div><span class="bg-secondary/10 px-3 py-1 text-secondary font-code-sm rounded">Active</span></div>
+            <div class="mt-3 flex gap-4 text-code-sm"><div><p class="text-on-surface-variant">Target</p><p class="text-primary font-bold">all services</p></div><div><p class="text-on-surface-variant">Schedule</p><p class="text-primary font-bold">every 60 min</p></div></div>
+          </div>
+          <div id="retention-status" class="hidden p-3 bg-secondary/10 border border-secondary/30 rounded text-secondary font-code-sm flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">check_circle</span><span id="retention-msg">Retention complete.</span></div>
+          <div class="p-4 bg-surface-container-lowest border border-outline-variant rounded">
+            <p class="font-label-caps text-label-caps text-on-surface-variant mb-2">DATA DISTRIBUTION</p>
+            <div class="space-y-2" id="level-distribution">
+              <div class="flex justify-between text-code-sm"><span class="text-on-surface-variant">Loading...</span></div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
-  </main>
-  <script src="app.js"></script>
-  <script>
-    initTheme(); loadNotifications(); setInterval(loadNotifications, 30000);
-    async function loadRetention() {
-      const logEl = document.getElementById('retention-log');
-      logEl.innerHTML = '<tr><td class="px-4 py-3 text-xs text-on-surface-variant" colspan="2">Run retention to see results</td></tr>';
-    }
-    async function runRetention() {
-      const btn = document.querySelector('button[onclick="runRetention()"]'); btn.textContent = 'Running...'; btn.disabled = true;
-      try {
-        const r = await fetch('/logs/retention/run', { method: 'POST' }); const d = await r.json();
-        document.getElementById('retention-log').innerHTML = `<tr><td class="px-4 py-3 text-xs font-mono">${new Date().toLocaleString()}</td><td class="px-4 py-3 text-xs">${d.deleted} rows</td></tr>`;
-        document.getElementById('deleted-today').textContent = d.deleted;
-      } catch (e) { alert('Failed: ' + e.message) }
-      btn.textContent = 'Run Now'; btn.disabled = false;
-    }
-    loadRetention();
-  </script>
-</body>
+    <!-- Service Breakdown Table -->
+    <div class="bg-surface-container border border-outline-variant rounded overflow-hidden">
+      <div class="flex justify-between items-center px-panel-padding py-3 border-b border-outline-variant">
+        <h2 class="font-headline-md text-headline-md text-primary">Storage by Service</h2>
+        <span class="font-code-sm text-code-sm text-on-surface-variant">Last 24 hours</span>
+      </div>
+      <table class="w-full text-left">
+        <thead class="border-b border-outline-variant">
+          <tr><th class="py-3 px-panel-padding font-label-caps text-label-caps text-on-surface-variant uppercase">Service</th><th class="py-3 px-panel-padding font-label-caps text-label-caps text-on-surface-variant uppercase">Events (24h)</th><th class="py-3 px-panel-padding font-label-caps text-label-caps text-on-surface-variant uppercase">% of Total</th><th class="py-3 px-panel-padding font-label-caps text-label-caps text-on-surface-variant uppercase">Est. Storage</th></tr>
+        </thead>
+        <tbody class="font-code-md text-code-md" id="service-table"><tr><td class="py-4 px-panel-padding text-on-surface-variant" colspan="4">Loading...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+initTheme();
+let lastRunDeleted = 0;
+let lastServiceBreakdown = [];
 
+async function loadRetentionData() {
+  const until = new Date().toISOString();
+  const since7d = new Date(Date.now() - 7*86400000).toISOString();
+  const since24h = new Date(Date.now() - 86400000).toISOString();
+  const since1h = new Date(Date.now() - 3600000).toISOString();
+
+  const [agg24h, agg7d, svcAgg, lvlAgg] = await Promise.all([
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h`),
+    fetchJSON(`/logs/aggregate?since=${since7d}&until=${until}&bucket=1d`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=service`),
+    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=level`),
+  ]);
+
+  // KPI: total events (approximate from 7d aggregate)
+  const total7d = agg7d?.buckets?.reduce((s,b)=>s+b.count,0)||0;
+  document.getElementById('kpi-total').textContent = total7d.toLocaleString();
+  document.getElementById('kpi-total-range').textContent = 'last 7 days';
+
+  // KPI: unique services from svcAgg
+  const svcSet = new Set((svcAgg?.buckets||[]).map(b=>b.group));
+  document.getElementById('kpi-services').textContent = svcSet.size || '—';
+
+  // KPI: last run from localStorage
+  const lastRun = localStorage.getItem('retention-last-run');
+  const lastDeleted = localStorage.getItem('retention-last-deleted');
+  if (lastRun) {
+    document.getElementById('kpi-last-run').textContent = new Date(parseInt(lastRun)).toLocaleString();
+    document.getElementById('kpi-last-deleted').textContent = lastDeleted ? `deleted ${parseInt(lastDeleted).toLocaleString()} logs` : '';
+  }
+
+  // Volume chart (7 days)
+  if (agg7d?.buckets?.length) {
+    const c = echarts.init(document.getElementById('chart-volume'));
+    c.setOption({
+      backgroundColor:'transparent',textStyle:{fontFamily:'Geist',color:'#c5c6cb'},
+      tooltip:{trigger:'axis',backgroundColor:'#171f33',borderColor:'#44474a',textStyle:{color:'#dae2fd'}},
+      grid:{left:45,right:20,top:10,bottom:30},
+      xAxis:{type:'category',data:agg7d.buckets.map(b=>new Date(b.start).toLocaleDateString()),axisLine:{lineStyle:{color:'rgba(68,71,74,0.3)'}},axisLabel:{fontSize:10}},
+      yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(68,71,74,0.3)'}},axisLabel:{fontSize:10}},
+      series:[{type:'bar',data:agg7d.buckets.map(b=>b.count),itemStyle:{color:'#4edea3',borderRadius:[4,4,0,0]},barMaxWidth:40}]
+    });
+    window.addEventListener('resize',()=>c.resize());
+  }
+
+  // Level distribution
+  const lvlContainer = document.getElementById('level-distribution');
+  if (lvlAgg?.buckets?.length) {
+    const lvlMap = {debug:'#8e9195',info:'#ffffff',warn:'#f59e0b',error:'#ffb4ab'};
+    const grps = {};
+    lvlAgg.buckets.forEach(b=>{grps[b.group||'info']=(grps[b.group||'info']||0)+b.count});
+    const total = Object.values(grps).reduce((s,v)=>s+v,0);
+    lvlContainer.innerHTML = Object.entries(grps).sort((a,b)=>b[1]-a[1]).map(([k,v])=>{
+      const pct = total ? ((v/total)*100).toFixed(1) : '0';
+      return `<div><div class="flex justify-between text-code-sm mb-1"><span style="color:${lvlMap[k]||'#ffffff'}">${k.toUpperCase()}</span><span class="text-on-surface-variant">${pct}% (${v.toLocaleString()})</span></div><div class="w-full bg-surface-container-lowest h-1.5 rounded-full overflow-hidden"><div class="h-full rounded-full" style="width:${pct}%;background:${lvlMap[k]||'#ffffff'}"></div></div></div>`;
+    }).join('');
+  } else {
+    lvlContainer.innerHTML = '<div class="text-code-sm text-on-surface-variant">No data in last 24h</div>';
+  }
+
+  // Service table
+  const tableBody = document.getElementById('service-table');
+  if (svcAgg?.buckets?.length) {
+    const grps = {};
+    svcAgg.buckets.forEach(b=>{grps[b.group||'unknown']=(grps[b.group||'unknown']||0)+b.count});
+    const total = Object.values(grps).reduce((s,v)=>s+v,0);
+    const entries = Object.entries(grps).sort((a,b)=>b[1]-a[1]);
+    lastServiceBreakdown = entries.map(([svc,count])=>{
+      const pct = total ? ((count/total)*100).toFixed(1) : '0';
+      const storage = (count * 0.512).toFixed(2); // rough estimate: ~512 bytes per log
+      return { service: svc, count, pct, storage };
+    });
+    tableBody.innerHTML = lastServiceBreakdown.map(({service,count,pct,storage})=>
+      `<tr class="border-b border-outline-variant/30 hover:bg-surface-container-high transition-colors"><td class="py-3 px-panel-padding text-primary font-bold">${service}</td><td class="py-3 px-panel-padding">${count.toLocaleString()}</td><td class="py-3 px-panel-padding">${pct}%</td><td class="py-3 px-panel-padding text-on-surface-variant">~${storage} KB</td></tr>`
+    ).join('');
+  } else {
+    lastServiceBreakdown = [];
+    tableBody.innerHTML = '<tr><td class="py-4 px-panel-padding text-on-surface-variant" colspan="4">No data in last 24h</td></tr>';
+  }
+}
+
+// Run retention
+document.getElementById('run-retention-btn').addEventListener('click', async function() {
+  const btn = this;
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">autorenew</span>Running...';
+  try {
+    const r = await fetch('/logs/retention/run', { method: 'POST' });
+    const data = await r.json();
+    const deleted = data.deleted ?? 0;
+    const statusEl = document.getElementById('retention-status');
+    document.getElementById('retention-msg').textContent = `Retention complete — deleted ${deleted.toLocaleString()} logs.`;
+    statusEl.classList.remove('hidden');
+    setTimeout(() => statusEl.classList.add('hidden'), 5000);
+    // Save to localStorage
+    localStorage.setItem('retention-last-run', Date.now().toString());
+    localStorage.setItem('retention-last-deleted', deleted.toString());
+    document.getElementById('kpi-last-run').textContent = new Date().toLocaleString();
+    document.getElementById('kpi-last-deleted').textContent = `deleted ${deleted.toLocaleString()} logs`;
+    // Refresh data
+    loadRetentionData();
+  } catch(e) {
+    console.error(e);
+  }
+  btn.disabled = false;
+  btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">play_arrow</span>Run Retention';
+});
+
+document.getElementById('export-csv-btn').addEventListener('click', () => {
+  if (!lastServiceBreakdown.length) {
+    window.showToast?.('No data to export', 'info');
+    return;
+  }
+  const rows = lastServiceBreakdown.map(({service,count,pct,storage}) => [service, count, `${pct}%`, `${storage} KB`]);
+  downloadCSV(`retention-storage-${Date.now()}.csv`, ['Service', 'Events (24h)', '% of Total', 'Est. Storage'], rows);
+  window.showToast?.(`Exported ${lastServiceBreakdown.length} services`, 'success');
+});
+
+loadRetentionData();
+setInterval(loadRetentionData, 30000);
+</script>
+</body>
 </html>

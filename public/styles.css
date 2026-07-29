@@ -1,53 +1,157 @@
-/* === Theme CSS Variables (Light) === */
-:root {
-  --on-error: #410003; --error: #ba1a1a; --error-container: #ffdad6; --on-error-container: #410003;
-  --primary: #005ac2; --on-primary: #ffffff; --primary-container: #d6e3ff; --on-primary-container: #001b3e;
-  --secondary: #5a5d72; --on-secondary: #ffffff; --secondary-container: #dee0f9; --on-secondary-container: #171a2c;
-  --tertiary: #006d47; --on-tertiary: #ffffff; --tertiary-container: #8af7b9; --on-tertiary-container: #002113;
-  --surface: #faf9fc; --surface-dim: #dad9dd; --surface-bright: #faf9fc;
-  --surface-container-lowest: #ffffff; --surface-container-low: #f4f3f6;
-  --surface-container: #eeeef0; --surface-container-high: #e8e8eb; --surface-container-highest: #e2e2e5;
-  --surface-variant: #e1e2ec; --on-surface: #1a1c20; --on-surface-variant: #43474e;
-  --outline: #73777f; --outline-variant: #c3c6cf;
-  --background: #faf9fc; --on-background: #1a1c20;
-  --inverse-surface: #2f3036; --inverse-on-surface: #f0f0f4; --inverse-primary: #adc6ff;
+/* === Theme CSS Variables === */
+:root, .light {
+  --on-error: #ffffff;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+  --on-error-container: #93000a;
+  --primary: #006c49;
+  --on-primary: #ffffff;
+  --primary-container: #10b981;
+  --on-primary-container: #00422b;
+  --secondary: #565e74;
+  --on-secondary: #ffffff;
+  --secondary-container: #dae2fd;
+  --on-secondary-container: #5c647a;
+  --tertiary: #a43a3a;
+  --on-tertiary: #ffffff;
+  --tertiary-container: #fc7c78;
+  --on-tertiary-container: #711419;
+  --background: #f8f9ff;
+  --on-background: #0b1c30;
+  --surface: #f8f9ff;
+  --surface-dim: #cbdbf5;
+  --surface-bright: #f8f9ff;
+  --surface-container-lowest: #ffffff;
+  --surface-container-low: #eff4ff;
+  --surface-container: #e5eeff;
+  --surface-container-high: #dce9ff;
+  --surface-container-highest: #d3e4fe;
+  --surface-variant: #d3e4fe;
+  --on-surface: #0b1c30;
+  --on-surface-variant: #3c4a42;
+  --outline: #6c7a71;
+  --outline-variant: #bbcabf;
+  --inverse-surface: #213145;
+  --inverse-on-surface: #eaf1ff;
+  --inverse-primary: #4edea3;
+  --surface-tint: #006c49;
+  --primary-fixed: #6ffbbe;
+  --primary-fixed-dim: #4edea3;
+  --on-primary-fixed: #002113;
+  --on-primary-fixed-variant: #005236;
+  --secondary-fixed: #dae2fd;
+  --secondary-fixed-dim: #bec6e0;
+  --on-secondary-fixed: #131b2e;
+  --on-secondary-fixed-variant: #3f465c;
+  --tertiary-fixed: #ffdad7;
+  --tertiary-fixed-dim: #ffb3af;
+  --on-tertiary-fixed: #410005;
+  --on-tertiary-fixed-variant: #842225;
+  color-scheme: light;
 }
 
-/* === Theme CSS Variables (Dark) === */
 .dark {
-  --on-error: #690005; --error: #ffb4ab; --error-container: #93000a; --on-error-container: #ffdad6;
-  --primary: #adc6ff; --on-primary: #002e6a; --primary-container: #4d8eff; --on-primary-container: #00285d;
-  --secondary: #c0c1ff; --on-secondary: #1000a9; --secondary-container: #3131c0; --on-secondary-container: #b0b2ff;
-  --tertiary: #4edea3; --on-tertiary: #003824; --tertiary-container: #00a572; --on-tertiary-container: #00311f;
-  --surface: #051424; --surface-dim: #051424; --surface-bright: #2c3a4c;
-  --surface-container-lowest: #010f1f; --surface-container-low: #0d1c2d;
-  --surface-container: #122131; --surface-container-high: #1c2b3c; --surface-container-highest: #273647;
-  --surface-variant: #273647; --on-surface: #d4e4fa; --on-surface-variant: #c2c6d6;
-  --outline: #8c909f; --outline-variant: #424754;
-  --background: #051424; --on-background: #d4e4fa;
-  --inverse-surface: #d4e4fa; --inverse-on-surface: #233143; --inverse-primary: #005ac2;
+  --on-error: #690005;
+  --error: #ffb4ab;
+  --error-container: #93000a;
+  --on-error-container: #ffdad6;
+  --primary: #ffffff;
+  --on-primary: #2b3137;
+  --primary-container: #dde3eb;
+  --on-primary-container: #5f656c;
+  --secondary: #4edea3;
+  --on-secondary: #003824;
+  --secondary-container: #00a572;
+  --on-secondary-container: #00311f;
+  --tertiary: #ffffff;
+  --on-tertiary: #233144;
+  --tertiary-container: #d5e3fd;
+  --on-tertiary-container: #57657b;
+  --background: #020617;
+  --on-background: #dae2fd;
+  --surface: #0b1326;
+  --surface-dim: #0b1326;
+  --surface-bright: #31394d;
+  --surface-container-lowest: #060e20;
+  --surface-container-low: #131b2e;
+  --surface-container: #171f33;
+  --surface-container-high: #222a3d;
+  --surface-container-highest: #2d3449;
+  --surface-variant: #2d3449;
+  --on-surface: #dae2fd;
+  --on-surface-variant: #c5c6cb;
+  --outline: #8e9195;
+  --outline-variant: #44474a;
+  --inverse-surface: #dae2fd;
+  --inverse-on-surface: #283044;
+  --inverse-primary: #595f66;
+  --surface-tint: #c1c7cf;
+  --primary-fixed: #dde3eb;
+  --primary-fixed-dim: #c1c7cf;
+  --on-primary-fixed: #161c22;
+  --on-primary-fixed-variant: #41474e;
+  --secondary-fixed: #6ffbbe;
+  --secondary-fixed-dim: #4edea3;
+  --on-secondary-fixed: #002113;
+  --on-secondary-fixed-variant: #005236;
+  --tertiary-fixed: #d5e3fd;
+  --tertiary-fixed-dim: #b9c7e0;
+  --on-tertiary-fixed: #0d1c2f;
+  --on-tertiary-fixed-variant: #3a485c;
+  color-scheme: dark;
 }
 
 /* === Material Symbols === */
 .material-symbols-outlined {
   font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
 }
 
-/* === Glass Card === */
-.glass-card {
-  background: color-mix(in srgb, var(--surface-container) 85%, transparent);
-  backdrop-filter: blur(12px);
-  border: 1px solid color-mix(in srgb, var(--outline-variant) 30%, transparent);
+/* === Body Defaults === */
+body {
+  background-color: var(--background);
+  color: var(--on-background);
+  font-family: 'Geist', sans-serif;
+  overflow: hidden;
 }
 
 /* === Custom Scrollbar === */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--surface-container-lowest); }
+::-webkit-scrollbar-thumb { background: var(--surface-container-highest); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--outline-variant); }
+
 .c-scroll::-webkit-scrollbar { width: 5px; height: 5px; }
 .c-scroll::-webkit-scrollbar-track { background: transparent; }
 .c-scroll::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 10px; }
+.c-scroll::-webkit-scrollbar-thumb:hover { background: var(--outline); }
 
 .log-stream::-webkit-scrollbar { width: 4px; }
 .log-stream::-webkit-scrollbar-track { background: transparent; }
 .log-stream::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 10px; }
+
+/* === Log Row === */
+.log-row:hover { background-color: var(--surface-container-high); }
+
+/* === Status Badge === */
+.status-badge {
+  font-family: 'JetBrains Mono', monospace;
+  padding: 2px 6px;
+  border-radius: 2px;
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+/* === Surface Card === */
+.surface-card {
+  background: var(--surface-container);
+  border: 1px solid var(--outline-variant);
+}
+.surface-card-low {
+  background: var(--surface-container-low);
+  border: 1px solid transparent;
+}
 
 /* === Animations === */
 .pulse-soft {
@@ -57,7 +161,6 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.7; }
 }
-
 @keyframes pulse-dot {
   0% { transform: scale(0.95); opacity: 0.5; }
   50% { transform: scale(1.1); opacity: 1; }
@@ -66,19 +169,20 @@
 .animate-pulse-dot { animation: pulse-dot 2s infinite; }
 
 /* === Log Row Colors === */
-.log-row-error { border-left: 3px solid var(--error); }
-.log-row-warn { border-left: 3px solid #f59e0b; }
-.log-row-info { border-left: 3px solid var(--primary); }
-.log-row-debug { border-left: 3px solid var(--outline); }
+.log-row-error { border-left: 2px solid var(--error) !important; }
+.log-row-warn { border-left: 2px solid #f59e0b !important; }
+.log-row-info { border-left: 2px solid #3b82f6 !important; }
+.log-row-debug { border-left: 2px solid var(--outline) !important; }
+.log-row-success { border-left: 2px solid var(--secondary) !important; }
 
-/* === Drawer Transition === */
+/* === Drawer === */
 .drawer-transition {
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* === Shimmer === */
 .shimmer {
-  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--primary) 15%, transparent), transparent);
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--surface-container-highest) 60%, transparent), transparent);
   background-size: 200% 100%;
   animation: shimmer 2s infinite;
 }
@@ -87,6 +191,25 @@
   100% { background-position: 200% 0; }
 }
 
-/* === Tailwind Fallbacks (in case CDN is slow) === */
-.dark { color-scheme: dark; }
-:root { color-scheme: light; }
+/* === Fade In === */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in {
+  animation: fadeIn 0.2s ease-out;
+}
+
+/* === Multi-line truncate === */
+.truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.truncate-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}

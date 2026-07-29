@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log Engine — Support</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="tailwind-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+</style></head>
+<body class="flex h-screen overflow-hidden">
+<aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+  <div class="px-4 mb-8">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 bg-primary rounded flex items-center justify-center"><span class="material-symbols-outlined text-background" style="font-variation-settings:'FILL'1">layers</span></div>
+      <h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary">Obsidian Log</h1>
+    </div>
+    <p class="font-body-md text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p>
+  </div>
+  <nav class="flex-1 space-y-1 px-2">
+    <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">terminal</span><span class="font-body-md text-body-md">Logs</span></a>
+    <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">analytics</span><span class="font-body-md text-body-md">Metrics</span></a>
+    <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">history</span><span class="font-body-md text-body-md">Retention</span></a>
+  </nav>
+  <div class="px-4 mt-auto space-y-4">
+    <button id="add-log-btn" type="button" class="w-full py-2 bg-primary text-on-primary font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-[18px]">post_add</span>Add Log</button>
+    <div class="pt-4 border-t border-outline-variant space-y-1">
+      <a href="/docs" class="flex items-center gap-3 px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors"><span class="material-symbols-outlined">menu_book</span><span class="font-body-md text-body-md">Docs</span></a>
+      <a href="/support" class="flex items-center gap-3 px-3 py-1.5 rounded text-secondary font-bold transition-colors"><span class="material-symbols-outlined">support_agent</span><span class="font-body-md text-body-md">Support</span></a>
+    </div>
+    <div class="flex items-center gap-3 mt-4 px-2">
+      <img class="w-8 h-8 rounded-full border border-outline-variant" alt="Admin" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyf0i83qAiUFyjaJaor7SyDewQlnItHxNdOK9zpoFlBY0Ir6v-Z_o4TH-uWQIoX39jOTXokQxPS-uxWaz7BdTfE5HoaVbQNk-DibBP_TMKupJ_jmMV5IG6ednbeHWwOvAos0M9oAP56Cr8RE_v5TijB8pWGP_7sL4MIthzJ2-qnT4kjdFq6ITWsTq7q0dRZsRvltD6sGaFF7GVwrrLHmMBMC11exGIrQ4lLir-eM0aqcLx6WzfgSn9"/>
+      <div class="overflow-hidden"><p class="text-[12px] font-bold truncate">Admin Root</p><p class="text-[10px] text-on-surface-variant truncate">cluster-admin-01</p></div>
+    </div>
+  </div>
+</aside>
+<main class="flex-1 ml-[240px] flex flex-col h-screen bg-background">
+  <header class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant z-40">
+    <div class="flex items-center gap-6">
+      <span class="text-label-caps text-on-surface-variant">SUPPORT</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+    </div>
+  </header>
+  <div class="flex-1 overflow-auto p-panel-padding space-y-6">
+    <div class="bg-surface border border-outline-variant rounded p-6">
+      <h1 class="font-headline-md font-bold text-primary mb-6">Support</h1>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-surface-container-low rounded p-4 flex items-start gap-3"><span class="material-symbols-outlined text-secondary">mail</span><div><h3 class="text-body-md font-bold text-primary">Email</h3><p class="text-code-sm text-on-surface-variant">support@obsidian.io</p></div></div>
+        <div class="bg-surface-container-low rounded p-4 flex items-start gap-3"><span class="material-symbols-outlined text-secondary">chat</span><div><h3 class="text-body-md font-bold text-primary">Live Chat</h3><p class="text-code-sm text-on-surface-variant">Available 24/7 for premium nodes</p></div></div>
+        <div class="bg-surface-container-low rounded p-4 flex items-start gap-3"><span class="material-symbols-outlined text-secondary">description</span><div><h3 class="text-body-md font-bold text-primary">Knowledge Base</h3><p class="text-code-sm text-on-surface-variant">Troubleshooting guides &amp; FAQs</p></div></div>
+        <div class="bg-surface-container-low rounded p-4 flex items-start gap-3"><span class="material-symbols-outlined text-secondary">bug_report</span><div><h3 class="text-body-md font-bold text-primary">Report an Issue</h3><p class="text-code-sm text-on-surface-variant">File a bug report on GitHub</p></div></div>
+      </div>
+      <div class="mt-6 bg-surface-container-low rounded p-4"><h3 class="text-body-md font-bold text-primary mb-2">System Status</h3><div class="flex items-center gap-2 text-secondary"><span class="w-2 h-2 rounded-full bg-secondary"></span><span class="text-code-sm font-bold">All systems operational</span></div></div>
+    </div>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>initTheme();</script>
+</body></html>

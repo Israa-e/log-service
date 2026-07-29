@@ -2,14 +2,6 @@ import { pool } from "../db/index.js";
 
 const VALID_LEVELS = ["debug", "info", "warn", "error"];
 
-function coerceAttrValue(val: string): string | number | boolean {
-  if (val === "true") return true;
-  if (val === "false") return false;
-  const num = Number(val);
-  if (!isNaN(num) && val.trim() !== "") return num;
-  return val;
-}
-
 interface LogEntry {
   timestamp: string;
   level: string;
@@ -34,7 +26,12 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
     for (let index = 0; index < logs.length; index++) {
         const log = logs[index]!;
 
-        const ts = log.timestamp || new Date().toISOString();
+        if (!log.timestamp) {
+            rejected.push({ index, reason: "timestamp is required" });
+            continue;
+        }
+
+        const ts = log.timestamp;
         const time = new Date(ts);
         if (isNaN(time.getTime())) {
             rejected.push({ index, reason: "invalid timestamp" });
@@ -105,8 +102,13 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
 export async function queryLogs(query: any) {
     const { service, level, since, until, q, cursor } = query;
 
-    if (level && !VALID_LEVELS.includes(level)) {
-        throw new Error(`invalid level: '${level}'`);
+    if (level) {
+        const levels = level.split(",");
+        for (const lvl of levels) {
+            if (!VALID_LEVELS.includes(lvl)) {
+                throw new Error(`invalid level: '${lvl}'`);
+            }
+        }
     }
 
     let limit = 100;
@@ -116,6 +118,15 @@ export async function queryLogs(query: any) {
             throw new Error("limit must be a number");
         }
         limit = Math.min(parsedLimit, 1000);
+    }
+
+    let offset = 0;
+    if (query.page) {
+        const parsedPage = parseInt(query.page, 10);
+        if (isNaN(parsedPage) || parsedPage < 1) {
+            throw new Error("page must be a positive number");
+        }
+        offset = (parsedPage - 1) * limit;
     }
 
     const conditions: string[] = [];
@@ -131,8 +142,9 @@ export async function queryLogs(query: any) {
     }
 
     if (level) {
-        conditions.push(`level = $${paramIndex}`);
-        values.push(level);
+        const levels = level.split(",");
+        conditions.push(`level = ANY($${paramIndex}::text[])`);
+        values.push(levels);
         paramIndex++;
     }
 
@@ -165,13 +177,15 @@ export async function queryLogs(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
-            const rawValue = query[key];
-            const coerced = coerceAttrValue(rawValue);
-            conditions.push(`attributes @> $${paramIndex}::jsonb`);
-            values.push(JSON.stringify({ [attrKey]: coerced }));
-            paramIndex++;
+            conditions.push(`attributes ->> $${paramIndex} = $${paramIndex + 1}`);
+            values.push(attrKey, query[key]);
+            paramIndex += 2;
         }
     }
+
+    // Capture filters for COUNT(*) before cursor pagination adds parameters
+    const filterConditions = [...conditions];
+    const filterValues = [...values];
 
     if (cursor) {
         const decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
@@ -181,11 +195,19 @@ export async function queryLogs(query: any) {
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
+    const querySql = cursor
+        ? `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit}`
+        : `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit} OFFSET ${offset}`;
 
-    const result = await pool.query(
-        `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit}`,
-        values
+    const result = await pool.query(querySql, values);
+
+    // Compute total count of filtered logs
+    const countWhereClause = filterConditions.length > 0 ? `WHERE ${filterConditions.join(" AND ")}` : "";
+    const countResult = await pool.query(
+        `SELECT COUNT(*) FROM logs ${countWhereClause}`,
+        filterValues
     );
+    const total = parseInt(countResult.rows[0].count, 10);
 
     let nextCursor = null;
     if (result.rows.length === limit) {
@@ -195,7 +217,7 @@ export async function queryLogs(query: any) {
         ).toString("base64");
     }
 
-    return { logs: result.rows, next_cursor: nextCursor };
+    return { logs: result.rows, total, next_cursor: nextCursor };
 }
 export async function queryAggregate(query: any) {
     const { service, level, since, until, q, bucket, group_by } = query;
@@ -260,10 +282,9 @@ export async function queryAggregate(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
-            const coerced = coerceAttrValue(query[key]);
-            conditions.push(`attributes @> $${paramIndex}::jsonb`);
-            values.push(JSON.stringify({ [attrKey]: coerced }));
-            paramIndex++;
+            conditions.push(`attributes ->> $${paramIndex} = $${paramIndex + 1}`);
+            values.push(attrKey, query[key]);
+            paramIndex += 2;
         }
     }
 

@@ -7,6 +7,7 @@ import { startAlertJob } from "./services/alertService.js";
 import alertsRouter from "./routes/alerts.js";
 import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";
+import supportRouter from "./routes/support.js";
 import { checkAuth } from "./controllers/authController.js";
 
 import path from "path";
@@ -28,18 +29,22 @@ const authPage = (file: string) => (req: any, res: any) => {
   res.sendFile(path.join(PUBLIC, file));
 };
 app.get("/login.html", (req, res) => res.sendFile(path.join(PUBLIC, "login.html")));
-app.get("/", (req, res) => res.redirect("/dashboard"));
-app.get("/dashboard", checkAuth, authPage("dashboard.html"));
+app.get("/", (req, res) => res.redirect("/logs-explorer"));
+app.get("/dashboard", (req, res) => res.redirect("/logs-explorer"));
 app.get("/logs-explorer", checkAuth, authPage("logs-explorer.html"));
 app.get("/analytics", checkAuth, authPage("analytics.html"));
 app.get("/ingestion", checkAuth, authPage("ingestion.html"));
 app.get("/retention", checkAuth, authPage("retention.html"));
+app.get("/history", checkAuth, authPage("retention.html"));
+app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
+app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
 app.use(express.static(PUBLIC));
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
 app.use("/auth", authRouter);
 app.use("/notifications", notificationsRouter);
+app.use("/support", supportRouter);
 
 startRetentionJob();
 startAlertJob();

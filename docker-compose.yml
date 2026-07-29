@@ -9,6 +9,7 @@ services:
       DB_PORT: 5432
       DASHBOARD_PASSWORD: LogService2026!
       SESSION_SECRET: fts-intern-log-service-secret-key-2026
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       db:
         condition: service_healthy

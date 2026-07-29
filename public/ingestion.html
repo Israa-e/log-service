@@ -1,139 +1,263 @@
 <!DOCTYPE html>
 <html class="dark" lang="en"><head>
-<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Lumina Logs — Ingestion Monitor</title>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log Engine — Settings</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script src="tailwind-config.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css"></head>
-<body class="bg-background text-on-surface font-sans h-screen overflow-hidden flex">
-<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
-  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina Logs</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
-  <nav class="flex-1 space-y-1">
-    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
-    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
-    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
-    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">settings_input_component</span>Ingestion</a>
-    <a href="/retention" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">storage</span>Retention</a>
+<style>
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+.setting-card:hover { border-color: rgba(78,222,163,0.3); }
+</style></head>
+<body class="flex h-screen overflow-hidden">
+<!-- SideNavBar -->
+<aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+  <div class="px-4 mb-8">
+    <div class="flex items-center gap-3 mb-1">
+      <div class="w-8 h-8 bg-primary rounded flex items-center justify-center"><span class="material-symbols-outlined text-background" style="font-variation-settings:'FILL'1">layers</span></div>
+      <h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary">Obsidian Log</h1>
+    </div>
+    <p class="font-body-md text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p>
+  </div>
+  <nav class="flex-1 space-y-1 px-2">
+    <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="terminal">terminal</span><span class="font-body-md text-body-md">Logs</span></a>
+    <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="analytics">analytics</span><span class="font-body-md text-body-md">Metrics</span></a>
+    <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined" data-icon="history">history</span><span class="font-body-md text-body-md">Retention</span></a>
   </nav>
-  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
+  <div class="px-4 mt-auto space-y-4">
+    <button id="add-log-btn" type="button" class="w-full py-2 bg-primary text-on-primary font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-[18px]">post_add</span>Add Log</button>
+    <div class="pt-4 border-t border-outline-variant space-y-1">
+      <a href="/docs" class="flex items-center gap-3 px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors cursor-pointer"><span class="material-symbols-outlined" data-icon="menu_book">menu_book</span><span class="font-body-md text-body-md">Docs</span></a>
+      <a href="/support" class="flex items-center gap-3 px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors cursor-pointer"><span class="material-symbols-outlined" data-icon="support_agent">support_agent</span><span class="font-body-md text-body-md">Support</span></a>
+    </div>
+    <div class="flex items-center gap-3 mt-4 px-2">
+      <div class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-background font-bold text-sm shrink-0">A</div>
+      <div class="overflow-hidden"><p class="text-[12px] font-bold truncate">Admin Root</p><p class="text-[10px] text-on-surface-variant truncate">cluster-admin-01</p></div>
+    </div>
+  </div>
 </aside>
-<main class="ml-64 flex-1 flex flex-col h-screen">
-  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
-    <h1 class="text-xl font-bold">Ingestion Monitor</h1>
+<!-- Main Content -->
+<main class="flex-1 ml-[240px] flex flex-col h-screen bg-background">
+  <!-- TopAppBar -->
+  <header class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant z-40">
     <div class="flex items-center gap-3">
-      <div class="relative" id="notif-btn"><button class="p-2 rounded-full text-on-surface-variant hover:text-primary relative" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-[10px] font-bold text-white rounded-full flex items-center justify-center hidden">0</span></button><div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20 bg-surface-container-high/50"><h3 class="text-sm font-semibold">Notifications</h3><button class="text-xs text-primary hover:underline" onclick="markAllNotifRead()">Mark all read</button></div><div class="max-h-80 overflow-y-auto c-scroll" id="notif-list"><div class="px-4 py-8 text-center text-on-surface-variant text-sm">Loading...</div></div></div></div>
-      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+      <span class="text-secondary font-bold font-code-sm">Settings</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all relative" id="notif-btn" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full hidden"></span></button>
+      <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="logout()" title="Logout"><span class="material-symbols-outlined">logout</span></button>
+      <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()" title="Toggle Theme"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
     </div>
   </header>
-  <div class="flex-1 overflow-y-auto c-scroll p-6 space-y-6 max-w-[1600px] mx-auto w-full">
-    <div class="glass-card rounded-xl overflow-hidden">
-      <button class="w-full flex items-center justify-between px-6 py-4 text-left hover:bg-surface-container-highest/20 transition-colors" onclick="this.parentElement.classList.toggle('collapsed');this.querySelector('.arrow').classList.toggle('-rotate-180')">
-        <div class="flex items-center gap-3"><span class="material-symbols-outlined text-primary">add_circle</span><h3 class="font-semibold">Manual Ingest</h3></div>
-        <span class="material-symbols-outlined arrow transition-transform duration-200">expand_less</span>
-      </button>
-      <div class="px-6 pb-5 space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Service</label><input id="ingest-service" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="e.g. checkout"></div>
-          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Level</label><select id="ingest-level" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none"><option value="info">info</option><option value="debug">debug</option><option value="warn">warn</option><option value="error">error</option></select></div>
-          <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Message</label><input id="ingest-message" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Log message"></div>
-        </div>
-        <div><label class="text-xs text-on-surface-variant uppercase tracking-wider block mb-1">Attributes <span class="text-on-surface-variant/60 normal-case">(optional JSON)</span></label><input id="ingest-attributes" class="w-full bg-surface-container border border-outline-variant/30 rounded-md px-3 py-2 text-sm font-mono focus:ring-2 focus:ring-primary/50 outline-none" placeholder='{"userId":"abc","region":"us"}'></div>
-        <div class="flex items-center gap-3">
-          <button class="px-5 py-2 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110 flex items-center gap-2" onclick="ingestLog()"><span class="material-symbols-outlined text-sm">send</span>Send</button>
-          <span id="ingest-result" class="text-xs text-on-surface-variant"></span>
-        </div>
+
+  <div id="notif-panel" class="hidden fixed right-4 top-16 w-96 bg-surface-container border border-outline-variant rounded shadow-2xl z-50 max-h-[70vh] flex flex-col">
+    <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant">
+      <h3 class="font-bold text-primary text-sm">Notifications</h3>
+      <button class="text-xs text-secondary hover:underline" onclick="markAllNotifRead()">Mark all read</button>
+    </div>
+    <div id="notif-list" class="flex-1 overflow-auto"></div>
+  </div>
+
+  <div class="flex-1 overflow-auto p-panel-padding space-y-6">
+
+    <!-- System Status -->
+    <div class="grid grid-cols-4 gap-4" id="status-cards">
+      <div class="bg-surface border border-outline-variant rounded p-4 setting-card transition-colors">
+        <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-secondary text-[18px]">check_circle</span><span class="text-label-caps text-on-surface-variant">API Status</span></div>
+        <p class="text-headline-md text-primary" id="s-api-status">—</p>
+      </div>
+      <div class="bg-surface border border-outline-variant rounded p-4 setting-card transition-colors">
+        <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-secondary text-[18px]">storage</span><span class="text-label-caps text-on-surface-variant">Retention Days</span></div>
+        <p class="text-headline-md text-primary" id="s-retention-days">—</p>
+      </div>
+      <div class="bg-surface border border-outline-variant rounded p-4 setting-card transition-colors">
+        <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-secondary text-[18px]">database</span><span class="text-label-caps text-on-surface-variant">Total Logs</span></div>
+        <p class="text-headline-md text-primary" id="s-total-logs">—</p>
+      </div>
+      <div class="bg-surface border border-outline-variant rounded p-4 setting-card transition-colors">
+        <div class="flex items-center gap-2 mb-3"><span class="material-symbols-outlined text-secondary text-[18px]">speed</span><span class="text-label-caps text-on-surface-variant">DB Latency</span></div>
+        <p class="text-headline-md text-primary" id="s-db-latency">—</p>
       </div>
     </div>
-    <style>.glass-card.collapsed .arrow{-webkit-transform:rotate(180deg)}.glass-card.collapsed>div:not(:first-child){display:none}</style>
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <div class="glass-card p-5 rounded-xl space-y-2">
-        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Current Rate</p><span class="material-symbols-outlined text-primary text-sm">trending_up</span></div>
-        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold" id="current-rate">—</h3><span class="text-xs text-on-surface-variant">/min</span></div>
-        <div class="w-full bg-surface-container-highest/40 h-1 rounded-full overflow-hidden"><div class="bg-primary h-full w-[60%] rounded-full pulse-soft" id="rate-bar"></div></div>
-      </div>
-      <div class="glass-card p-5 rounded-xl space-y-2">
-        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Accepted</p><span class="material-symbols-outlined text-tertiary text-sm">check_circle</span></div>
-        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold text-tertiary" id="accepted-count">—</h3></div>
-      </div>
-      <div class="glass-card p-5 rounded-xl space-y-2">
-        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Rejection Rate</p><div class="w-2 h-2 rounded-full bg-error pulse-soft"></div></div>
-        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold text-error" id="rejection-rate">—</h3><span class="text-xs text-on-surface-variant">%</span></div>
-      </div>
-      <div class="glass-card p-5 rounded-xl space-y-2">
-        <div class="flex justify-between items-start"><p class="text-xs text-on-surface-variant uppercase tracking-wider">Queue Buffer</p><span class="material-symbols-outlined text-secondary text-sm">hourglass_empty</span></div>
-        <div class="flex items-baseline gap-1"><h3 class="text-3xl font-bold" id="queue-buffer">—</h3><span class="text-xs text-on-surface-variant">%</span></div>
-      </div>
-    </div>
-    <div class="grid grid-cols-12 gap-6">
-      <div class="col-span-12 lg:col-span-8 glass-card rounded-xl p-6 h-[400px]"><h3 class="font-semibold mb-4">Ingestion Flow</h3><div class="flex-1 h-[340px]" id="ingestion-chart"></div></div>
-      <div class="col-span-12 lg:col-span-4 space-y-4">
-        <div class="glass-card p-5 rounded-xl space-y-4"><h3 class="font-semibold">System Health</h3>
-          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">CPU Ingest</span><span class="font-bold" id="cpu-ingest">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-primary h-full transition-all duration-1000" id="cpu-bar" style="width:0%"></div></div></div>
-          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Memory</span><span class="font-bold" id="mem-usage">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-secondary h-full transition-all duration-1000" id="mem-bar" style="width:0%"></div></div></div>
-          <div><div class="flex justify-between text-xs mb-1"><span class="text-on-surface-variant">Backpressure</span><span class="font-bold text-tertiary" id="backpressure">—</span></div><div class="w-full bg-surface-container-highest/40 h-2 rounded-full overflow-hidden"><div class="bg-tertiary h-full transition-all duration-1000" id="bp-bar" style="width:0%"></div></div></div>
-        </div>
-        <div class="glass-card p-5 rounded-xl space-y-3 border-l-4 border-primary">
-          <div class="flex justify-between items-center"><h3 class="font-semibold text-sm">Retention</h3><a href="/retention" class="text-xs text-primary hover:underline">Manage</a></div>
-          <div class="flex items-center gap-3"><div class="relative w-16 h-16"><svg class="w-full h-full" viewBox="0 0 36 36"><path class="text-surface-container-highest" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="currentColor" stroke-width="3"></path><path class="text-primary" d="M18 2.0845a15.9155 15.9155 0 0 1 0 31.831a15.9155 15.9155 0 0 1 0-31.831" fill="none" stroke="#adc6ff" stroke-dasharray="65,100" stroke-linecap="round" stroke-width="3"></path></svg><div class="absolute inset-0 flex items-center justify-center"><span class="text-[10px] font-bold" id="retention-pct">65%</span></div></div><div class="flex-1"><p class="text-sm font-bold" id="retention-detail">—</p><p class="text-xs text-on-surface-variant" id="retention-est">—</p></div></div>
+
+    <!-- Nav Tabs -->
+    <section class="border-b border-outline-variant flex gap-1">
+      <button class="px-4 py-2.5 text-body-md font-bold text-primary border-b-2 border-secondary transition-colors" data-tab="general" onclick="switchTab('general')">General</button>
+      <button class="px-4 py-2.5 text-body-md text-on-surface-variant hover:text-primary transition-colors" data-tab="ingestion" onclick="switchTab('ingestion')">Ingestion</button>
+      <button class="px-4 py-2.5 text-body-md text-on-surface-variant hover:text-primary transition-colors" data-tab="storage" onclick="switchTab('storage')">Storage</button>
+    </section>
+
+    <!-- General Tab -->
+    <section id="tab-general" class="space-y-6">
+      <div class="bg-surface border border-outline-variant rounded p-6 setting-card transition-colors">
+        <h3 class="text-body-md font-bold text-primary mb-4">General Configuration</h3>
+        <div class="grid grid-cols-3 gap-6">
+          <div><label class="text-label-caps text-on-surface-variant block mb-1">Cluster Name</label><input id="cfg-cluster-name" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary"/></div>
+          <div><label class="text-label-caps text-on-surface-variant block mb-1">Region</label><input id="cfg-region" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary"/></div>
+          <div><label class="text-label-caps text-on-surface-variant block mb-1">Timezone</label><select id="cfg-timezone" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary"><option>UTC</option><option>America/New_York</option><option>America/Los_Angeles</option><option>Europe/London</option></select></div>
         </div>
       </div>
+      <div class="bg-surface border border-outline-variant rounded p-6 setting-card transition-colors">
+        <h3 class="text-body-md font-bold text-primary mb-4">Retention Policy</h3>
+        <div class="flex items-center gap-4">
+          <div class="flex-1"><label class="text-label-caps text-on-surface-variant block mb-1">Retention Period (days)</label><input id="cfg-retention-days" type="number" min="1" max="365" class="w-full max-w-xs bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary"/></div>
+          <div class="pt-5"><button id="run-retention-now" class="px-4 py-2 border border-secondary text-secondary rounded text-body-md hover:bg-secondary hover:text-on-secondary transition-all flex items-center gap-2"><span class="material-symbols-outlined text-[18px]">play_arrow</span>Run Retention</button></div>
+        </div>
+        <p class="text-code-sm text-on-surface-variant mt-2 opacity-60">Changes to retention period take effect on the next scheduled run (hourly).</p>
+      </div>
+    </section>
+
+    <!-- Ingestion Tab -->
+    <section id="tab-ingestion" class="space-y-6 hidden">
+      <div class="bg-surface border border-outline-variant rounded p-6 setting-card transition-colors">
+        <h3 class="text-body-md font-bold text-primary mb-4">Ingestion Pipeline</h3>
+        <div class="space-y-5">
+          <div class="flex items-center justify-between"><div><p class="text-body-md text-primary font-medium">Batch Validation</p><p class="text-label-caps text-on-surface-variant">Validate log schema before ingest</p></div><label class="relative inline-flex items-center cursor-pointer"><input id="cfg-batch-validation" type="checkbox" class="sr-only peer"/><div class="w-10 h-5 bg-surface-container-highest rounded-full peer peer-checked:bg-secondary peer-checked:after:translate-x-5 after:content-[''] after:absolute after:top-0.5 after:left-[3px] after:bg-surface after:rounded-full after:h-4 after:w-4 after:transition-all"></div></label></div>
+          <div><label class="text-body-md text-primary font-medium block mb-2">Max Batch Size</label><div class="flex items-center gap-4"><input id="cfg-batch-size" type="range" min="100" max="10000" value="2500" class="flex-1 h-1.5 bg-surface-container-highest rounded-full appearance-none cursor-pointer" oninput="document.getElementById('batch-size-val').textContent=this.value"/><span id="batch-size-val" class="text-code-sm text-primary font-bold w-16 text-right">2500</span></div></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Storage Tab -->
+    <section id="tab-storage" class="space-y-6 hidden">
+      <div class="bg-surface border border-outline-variant rounded p-6 setting-card transition-colors">
+        <h3 class="text-body-md font-bold text-primary mb-4">Storage &amp; Database</h3>
+        <div class="grid grid-cols-2 gap-6">
+          <div><label class="text-label-caps text-on-surface-variant block mb-1">Max Pool Connections</label><input id="cfg-max-pool" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary" type="number"/></div>
+          <div><label class="text-label-caps text-on-surface-variant block mb-1">Statement Timeout (ms)</label><input id="cfg-timeout" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2 text-body-md text-primary focus:outline-none focus:border-secondary" type="number"/></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <div class="flex justify-end gap-3 pt-4 border-t border-outline-variant">
+      <button id="discard-btn" class="px-5 py-2 border border-outline-variant text-on-surface-variant text-body-md rounded hover:text-primary transition-all">Discard</button>
+      <button id="save-btn" class="px-5 py-2 bg-primary text-on-primary font-bold text-body-md rounded hover:opacity-90 transition-all">Save Settings</button>
     </div>
   </div>
 </main>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/echarts/5.4.3/echarts.min.js"></script>
 <script src="app.js"></script>
 <script>
 initTheme();
 
-async function loadIngestion() {
-  const until=new Date().toISOString();
-  const since1h=new Date(Date.now()-3600000).toISOString();
-  const since24h=new Date(Date.now()-86400000).toISOString();
-  const [agg, svcAgg, logsRes] = await Promise.all([
-    fetchJSON(`/logs/aggregate?since=${since1h}&until=${until}&bucket=1m`),
-    fetchJSON(`/logs/aggregate?since=${since24h}&until=${until}&bucket=1h&group_by=service`),
-    fetchJSON(`/logs?limit=1`)
-  ]);
-  const buckets=agg?.buckets||[];
-  const rate=buckets.length?Math.round(buckets.reduce((s,b)=>s+b.count,0)/buckets.length):0;
-  const total=buckets.reduce((s,b)=>s+b.count,0);
-  document.getElementById('current-rate').textContent=rate;
-  document.getElementById('accepted-count').textContent=total;
-  document.getElementById('rejection-rate').textContent='0.00';
-  document.getElementById('queue-buffer').textContent='12';
-  document.getElementById('cpu-ingest').textContent='42%';
-  document.getElementById('cpu-bar').style.width='42%';
-  document.getElementById('mem-usage').textContent='78%';
-  document.getElementById('mem-bar').style.width='78%';
-  document.getElementById('backpressure').textContent='0.02ms';
-  document.getElementById('bp-bar').style.width='2%';
-  document.getElementById('retention-pct').textContent='65%';
-  document.getElementById('retention-detail').textContent='4.2 TB / 6.5 TB';
-  document.getElementById('retention-est').textContent='Est. 14 days remaining';
-  if(buckets.length){
-    const c=echarts.init(document.getElementById('ingestion-chart'));
-    c.setOption({backgroundColor:'transparent',textStyle:{fontFamily:'Inter',color:'#c2c6d6'},grid:{left:40,right:20,top:20,bottom:40},xAxis:{type:'category',data:buckets.map(b=>new Date(b.start).toLocaleTimeString()),axisLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},yAxis:{type:'value',splitLine:{lineStyle:{color:'rgba(140,144,159,0.1)'}}},series:[{type:'line',smooth:true,symbol:'none',data:buckets.map(b=>b.count),lineStyle:{color:'#adc6ff',width:2},areaStyle:{color:new echarts.graphic.LinearGradient(0,0,0,1,[{offset:0,color:'rgba(173,198,255,0.3)'},{offset:1,color:'rgba(173,198,255,0)'}])},markLine:{data:[{type:'average',name:'Avg'}],lineStyle:{color:'#4edea3',type:'dashed'}}}],tooltip:{trigger:'axis'}});
-    window.addEventListener('resize',()=>c.resize());
+function switchTab(name) {
+  document.querySelectorAll('[data-tab]').forEach(t => {
+    t.classList.remove('text-primary', 'border-b-2', 'border-secondary');
+    t.classList.add('text-on-surface-variant');
+  });
+  document.querySelector(`[data-tab="${name}"]`).classList.add('text-primary', 'border-b-2', 'border-secondary');
+  document.querySelectorAll('[id^="tab-"]').forEach(s => s.classList.add('hidden'));
+  document.getElementById('tab-' + name).classList.remove('hidden');
+}
+
+const DEFAULTS = {
+  clusterName: 'Cluster-01',
+  region: 'US-East-1',
+  timezone: 'UTC',
+  retentionDays: 30,
+  batchValidation: true,
+  batchSize: 2500,
+  maxPool: 25,
+  timeout: 30000,
+};
+
+function loadSettings() {
+  const saved = localStorage.getItem('obsidian-settings');
+  const s = saved ? { ...DEFAULTS, ...JSON.parse(saved) } : DEFAULTS;
+  document.getElementById('cfg-cluster-name').value = s.clusterName;
+  document.getElementById('cfg-region').value = s.region;
+  document.getElementById('cfg-timezone').value = s.timezone;
+  document.getElementById('cfg-retention-days').value = s.retentionDays;
+  document.getElementById('cfg-batch-validation').checked = s.batchValidation;
+  document.getElementById('cfg-batch-size').value = s.batchSize;
+  document.getElementById('batch-size-val').textContent = s.batchSize;
+  document.getElementById('cfg-max-pool').value = s.maxPool;
+  document.getElementById('cfg-timeout').value = s.timeout;
+  return s;
+}
+
+function getSettings() {
+  return {
+    clusterName: document.getElementById('cfg-cluster-name').value,
+    region: document.getElementById('cfg-region').value,
+    timezone: document.getElementById('cfg-timezone').value,
+    retentionDays: parseInt(document.getElementById('cfg-retention-days').value) || 30,
+    batchValidation: document.getElementById('cfg-batch-validation').checked,
+    batchSize: parseInt(document.getElementById('cfg-batch-size').value) || 2500,
+    maxPool: parseInt(document.getElementById('cfg-max-pool').value) || 25,
+    timeout: parseInt(document.getElementById('cfg-timeout').value) || 30000,
+  };
+}
+
+loadSettings();
+
+document.getElementById('discard-btn').addEventListener('click', () => {
+  loadSettings();
+  window.showToast?.('Settings reverted', 'info');
+});
+
+document.getElementById('save-btn').addEventListener('click', function () {
+  const s = getSettings();
+  localStorage.setItem('obsidian-settings', JSON.stringify(s));
+  const btn = this;
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin mr-1">autorenew</span>Saving...';
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+    window.showToast?.('Settings saved', 'success');
+  }, 500);
+});
+
+document.getElementById('run-retention-now').addEventListener('click', async function () {
+  const btn = this;
+  btn.disabled = true;
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">autorenew</span> Running...';
+  try {
+    const r = await fetch('/logs/retention/run', { method: 'POST' });
+    const data = await r.json();
+    window.showToast?.(`Retention complete — deleted ${data.deleted ?? 0} logs`, 'success');
+  } catch {
+    window.showToast?.('Retention run failed', 'error');
+  }
+  btn.disabled = false;
+  btn.innerHTML = orig;
+});
+
+async function loadSystemStatus() {
+  try {
+    const health = await fetch('/health');
+    document.getElementById('s-api-status').textContent = health.ok ? 'Healthy' : 'Down';
+    document.getElementById('s-api-status').className = health.ok ? 'text-headline-md text-secondary' : 'text-headline-md text-error';
+  } catch {
+    document.getElementById('s-api-status').textContent = 'Unreachable';
+    document.getElementById('s-api-status').className = 'text-headline-md text-error';
+  }
+
+  try {
+    const logsRes = await fetchJSON('/logs?limit=1');
+    const total = logsRes?.total ?? 0;
+    document.getElementById('s-total-logs').textContent = total > 0 ? total.toLocaleString() : '0';
+  } catch {
+    document.getElementById('s-total-logs').textContent = '—';
+  }
+
+  const settings = getSettings();
+  document.getElementById('s-retention-days').textContent = settings.retentionDays + ' days';
+
+  const tStart = performance.now();
+  try {
+    await fetch('/health');
+    document.getElementById('s-db-latency').textContent = Math.round(performance.now() - tStart) + 'ms';
+  } catch {
+    document.getElementById('s-db-latency').textContent = '—';
   }
 }
-async function ingestLog() {
-  const svc=document.getElementById('ingest-service').value.trim();
-  const lvl=document.getElementById('ingest-level').value;
-  const msg=document.getElementById('ingest-message').value.trim();
-  const attrs=document.getElementById('ingest-attributes').value.trim();
-  const result=document.getElementById('ingest-result');
-  if(!svc||!msg){result.textContent='Service and Message are required';result.style.color='#ffb4ab';return}
-  let attributes;
-  if(attrs){try{attributes=JSON.parse(attrs)}catch(e){result.textContent='Invalid JSON in Attributes';result.style.color='#ffb4ab';return}}
-  try {
-    const res=await fetch('/logs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({logs:[{service:svc,level:lvl,message:msg,attributes}]})});
-    const data=await res.json();
-    if(data.accepted>0){result.textContent=`Accepted: ${data.accepted} log(s)`;result.style.color='#4edea3';document.getElementById('ingest-service').value='';document.getElementById('ingest-message').value='';document.getElementById('ingest-attributes').value='';loadIngestion()}
-    else{result.textContent=`Rejected: ${data.rejected?.[0]?.reason||'error'}`;result.style.color='#ffb4ab'}
-  }catch(e){result.textContent='Network error';result.style.color='#ffb4ab'}
-}
-loadIngestion();loadNotifications();setInterval(loadIngestion,10000);setInterval(loadNotifications,30000);
+
+loadSystemStatus();
 </script>
 </body></html>

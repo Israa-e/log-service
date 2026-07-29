@@ -1,107 +1,632 @@
 <!DOCTYPE html>
-<html class="dark" lang="en"><head>
-<meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Lumina Logs — Logs Explorer</title>
-<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="tailwind-config.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@450&display=swap" rel="stylesheet"/>
-<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
-<link rel="stylesheet" href="styles.css"></head>
-<body class="bg-background text-on-surface font-sans h-screen flex overflow-hidden">
-<aside class="flex flex-col h-screen p-4 bg-surface-container-low border-r border-outline-variant/30 w-64 fixed left-0 top-0 z-40">
-  <div class="mb-6 px-2 flex items-center gap-3"><div class="w-10 h-10 rounded-lg bg-primary-container flex items-center justify-center"><span class="material-symbols-outlined text-on-primary-container" style="font-variation-settings:'FILL'1">monitoring</span></div><div><h1 class="text-lg font-bold text-primary">Lumina Logs</h1><p class="text-xs text-on-surface-variant">Observability</p></div></div>
-  <nav class="flex-1 space-y-1">
-    <a href="/dashboard" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">dashboard</span>Dashboard</a>
-    <a href="/logs-explorer" class="flex items-center gap-3 px-4 py-2 rounded-lg text-primary bg-primary-container/10 border-r-2 border-primary text-sm"><span class="material-symbols-outlined">search_insights</span>Logs Explorer</a>
-    <a href="/analytics" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">analytics</span>Analytics</a>
-    <a href="/ingestion" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">settings_input_component</span>Ingestion</a>
-    <a href="/retention" class="flex items-center gap-3 px-4 py-2 rounded-lg text-on-surface-variant hover:bg-surface-container-highest/50 text-sm"><span class="material-symbols-outlined">storage</span>Retention</a>
-  </nav>
-  <div class="mt-auto pt-4 border-t border-outline-variant/20"><div class="flex items-center gap-3 px-4 py-2 text-tertiary text-sm"><span class="material-symbols-outlined">check_circle</span>System Healthy</div></div>
-</aside>
-<main class="ml-64 flex-1 flex flex-col h-screen">
-  <header class="sticky top-0 z-30 flex justify-between items-center px-6 py-3 bg-surface/75 backdrop-blur-xl border-b border-outline-variant/20">
-    <h1 class="text-xl font-bold">Logs Explorer</h1>
-    <div class="flex items-center gap-3">
-      <div class="relative" id="notif-btn"><button class="p-2 rounded-full text-on-surface-variant hover:text-primary relative" onclick="toggleNotif()"><span class="material-symbols-outlined">notifications</span><span id="notif-badge" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-[10px] font-bold text-white rounded-full flex items-center justify-center hidden">0</span></button><div id="notif-panel" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-low border border-outline-variant/30 rounded-xl shadow-2xl z-50 overflow-hidden"><div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant/20 bg-surface-container-high/50"><h3 class="text-sm font-semibold">Notifications</h3><button class="text-xs text-primary hover:underline" onclick="markAllNotifRead()">Mark all read</button></div><div class="max-h-80 overflow-y-auto c-scroll" id="notif-list"><div class="px-4 py-8 text-center text-on-surface-variant text-sm">Loading...</div></div></div></div>
-      <button class="p-2 rounded-full text-on-surface-variant hover:text-primary" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
-    </div>
-  </header>
-  <div class="px-6 py-3 glass-card mx-6 mt-3 rounded-xl">
-    <ul class="flex flex-wrap items-center gap-3">
-      <li class="flex items-center gap-2 text-xs uppercase text-on-surface-variant tracking-wider">Filters:</li>
-      <li><input id="f-svc" class="w-32 bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Service" onchange="loadLogs()" onkeyup="if(event.key==='Enter')loadLogs()"></li>
-      <li><select id="f-lvl" class="bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" onchange="loadLogs()"><option value="">All Levels</option><option>debug</option><option>info</option><option>warn</option><option>error</option></select></li>
-      <li><input id="f-q" class="flex-1 min-w-[200px] bg-surface-container border border-outline-variant/30 rounded-md px-3 py-1.5 text-sm focus:ring-2 focus:ring-primary/50 outline-none" placeholder="Search message..." onkeyup="if(event.key==='Enter')loadLogs()"></li>
-      <li><button class="flex items-center gap-1 px-4 py-1.5 bg-primary text-on-primary text-sm font-bold rounded-lg hover:brightness-110" onclick="loadLogs()"><span class="material-symbols-outlined text-sm">search</span>Search</button></li>
-      <li class="text-xs text-on-surface-variant ml-auto" id="result-count"></li>
-    </ul>
-  </div>
-  <div class="flex-1 overflow-hidden flex flex-col mx-6 my-3 rounded-xl glass-card">
-    <div class="px-6 py-2 grid grid-cols-12 gap-3 border-b border-outline-variant/20 bg-surface-container-low text-xs text-on-surface-variant uppercase tracking-wider font-semibold">
-      <div class="col-span-2">Timestamp</div><div class="col-span-2">Service</div><div class="col-span-1">Level</div><div class="col-span-5">Message</div><div class="col-span-2 text-right">Attributes</div>
-    </div>
-    <div class="flex-1 overflow-y-auto c-scroll" id="log-container">
-      <div class="flex items-center justify-center h-full text-on-surface-variant text-sm">Loading logs...</div>
-    </div>
-  </div>
-</main>
-<div class="fixed right-0 top-0 h-screen w-[480px] bg-surface-container-low border-l border-outline-variant/30 shadow-2xl z-50 translate-x-full transition-transform duration-300 flex flex-col" id="details-drawer">
-  <div class="p-5 border-b border-outline-variant/20 flex items-center justify-between bg-surface-container-high/50">
-    <div class="flex items-center gap-3"><span class="px-2 py-1 rounded-md text-xs font-bold uppercase" id="dd-level">ERROR</span><h3 class="font-semibold">Log Details</h3></div>
-    <button class="p-1 hover:bg-surface-container-highest rounded-full" onclick="closeDetails()"><span class="material-symbols-outlined">close</span></button>
-  </div>
-  <div class="flex-1 overflow-y-auto c-scroll p-5 space-y-6" id="dd-body"></div>
-  <div class="p-4 border-t border-outline-variant/20 bg-surface-container-high/50 flex gap-3">
-    <button class="flex-1 py-2.5 bg-primary text-on-primary font-bold rounded-lg hover:brightness-110" onclick="closeDetails()">Close</button>
-  </div>
-</div>
-<script src="app.js"></script>
-<script>
-initTheme();
-let currentLogs=[];
+<html class="dark" lang="en">
 
-async function loadLogs() {
-  const svc=document.getElementById('f-svc').value;
-  const lvl=document.getElementById('f-lvl').value;
-  const q=document.getElementById('f-q').value;
-  const p=new URLSearchParams({limit:'50'});
-  if(svc)p.set('service',svc);if(lvl)p.set('level',lvl);if(q)p.set('q',q);
-  const data=await fetchJSON(`/logs?${p}`);
-  currentLogs=data?.logs||[];
-  document.getElementById('result-count').textContent=`${currentLogs.length} results`;
-  const c=document.getElementById('log-container');c.innerHTML='';
-  if(!currentLogs.length){c.innerHTML='<div class="flex items-center justify-center h-full text-on-surface-variant text-sm">No logs found</div>';return}
-  currentLogs.forEach((log,i)=>{
-    const d=document.createElement('div');
-    const rc=`log-row-${log.level}`;
-    const lc={error:'bg-error/10 text-error border-error/30',warn:'bg-orange-400/10 text-orange-400 border-orange-400/30',info:'bg-primary/10 text-primary border-primary/30',debug:'bg-outline/10 text-outline border-outline/30'};
-    d.className=`px-6 py-2 grid grid-cols-12 gap-3 items-center border-b border-outline-variant/10 hover:bg-surface-container-highest/30 cursor-pointer transition-colors ${rc}`;
-    d.onclick=()=>openDetails(i);
-    d.innerHTML=`<div class="col-span-2 font-mono text-xs text-on-surface-variant/80">${new Date(log.timestamp).toLocaleString()}</div>
-<div class="col-span-2"><span class="px-2 py-0.5 bg-surface-container-highest rounded text-xs">${log.service}</span></div>
-<div class="col-span-1"><span class="px-2 py-0.5 ${lc[log.level]||lc.info} border rounded-full text-[10px] font-bold uppercase">${log.level}</span></div>
-<div class="col-span-5 font-mono text-xs truncate">${log.message}</div>
-<div class="col-span-2 text-right font-mono text-xs text-on-surface-variant truncate">${log.attributes?Object.keys(log.attributes).slice(0,2).join(', ')+(Object.keys(log.attributes).length>2?', ...':''):'—'}</div>`;
-    c.appendChild(d);
-  });
-}
-function openDetails(i) {
-  const log=currentLogs[i];if(!log)return;
-  const lc={error:'bg-error/10 text-error',warn:'bg-orange-400/10 text-orange-400',info:'bg-primary/10 text-primary',debug:'bg-outline/10 text-outline'};
-  document.getElementById('dd-level').className=`px-2 py-1 rounded-md text-xs font-bold uppercase ${lc[log.level]||lc.info}`;
-  document.getElementById('dd-level').textContent=log.level;
-  document.getElementById('dd-body').innerHTML=`
-    <section><h4 class="text-xs text-primary uppercase tracking-wider mb-3 font-semibold">Summary</h4>
-      <div class="space-y-2 text-sm">${['Timestamp','Service','Message'].map(f=>`<div class="flex justify-between"><span class="text-on-surface-variant">${f}</span><span class="font-mono text-xs">${f==='Timestamp'?new Date(log.timestamp).toLocaleString():log[f.toLowerCase()]}</span></div>`).join('')}</div></section>
-    <section><h4 class="text-xs text-primary uppercase tracking-wider mb-3 font-semibold">Attributes</h4>
-      <pre class="p-4 bg-[#010f1f] rounded-lg font-mono text-xs border border-outline-variant/20 overflow-x-auto">${log.attributes?JSON.stringify(log.attributes,null,2):'null'}</pre>
-      <button class="mt-2 text-xs text-primary hover:underline" onclick="copyAttr(${i})">Copy JSON</button></section>`;
-  document.getElementById('details-drawer').classList.remove('translate-x-full');
-}
-function closeDetails(){document.getElementById('details-drawer').classList.add('translate-x-full')}
-function copyAttr(i){const a=currentLogs[i]?.attributes;a&&navigator.clipboard.writeText(JSON.stringify(a,null,2))}
-document.addEventListener('keydown',e=>{if(e.key==='Escape')closeDetails()});
-loadLogs();loadNotifications();setInterval(loadLogs,10000);setInterval(loadNotifications,30000);
-</script>
-</body></html>
+<head>
+  <meta charset="utf-8" />
+  <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+  <title>Obsidian Log — Logs Explorer</title>
+  <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+  <script src="tailwind-config.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+    rel="stylesheet" />
+  <link
+    href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Geist:wght@400;600;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .status-badge {
+      font-family: 'JetBrains Mono', monospace;
+      padding: 2px 6px;
+      border-radius: 2px;
+      font-size: 10px;
+      text-transform: uppercase;
+      font-weight: 600;
+    }
+
+    .log-row {
+      transition: background-color 0.1s;
+      cursor: pointer;
+    }
+
+    .log-row.selected {
+      background-color: var(--surface-container-high) !important;
+    }
+  </style>
+</head>
+
+<body class="flex h-screen overflow-hidden">
+
+  <!-- SideNavBar -->
+  <aside
+    class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+    <div class="px-4 mb-8">
+      <div class="flex items-center gap-3 mb-1">
+        <div class="w-8 h-8 bg-primary rounded flex items-center justify-center">
+          <span class="material-symbols-outlined text-background" style="font-variation-settings:'FILL'1">layers</span>
+        </div>
+        <h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary">Obsidian Log</h1>
+      </div>
+      <p class="font-body-md text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p>
+    </div>
+    <nav class="flex-1 space-y-1 px-2">
+      <a href="/logs-explorer"
+        class="flex items-center gap-3 px-3 py-2 rounded text-secondary font-bold bg-surface-container-highest transition-colors">
+        <span class="material-symbols-outlined">terminal</span><span class="font-body-md text-body-md">Logs</span>
+      </a>
+      <a href="/analytics"
+        class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">analytics</span><span class="font-body-md text-body-md">Metrics</span>
+      </a>
+      <a href="/retention"
+        class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">history</span><span class="font-body-md text-body-md">Retention</span>
+      </a>
+    </nav>
+    <div class="px-4 mt-auto space-y-4">
+      <button id="add-log-btn" type="button"
+        class="w-full py-2 bg-primary text-on-primary font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer">
+        <span class="material-symbols-outlined text-[18px]">post_add</span>Add Log
+      </button>
+      <div class="pt-4 border-t border-outline-variant space-y-1">
+        <a href="/docs"
+          class="flex items-center gap-3 px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors">
+          <span class="material-symbols-outlined">menu_book</span><span class="font-body-md text-body-md">Docs</span>
+        </a>
+        <a href="/support"
+          class="flex items-center gap-3 px-3 py-1.5 rounded text-on-surface-variant hover:text-primary transition-colors">
+          <span class="material-symbols-outlined">support_agent</span><span
+            class="font-body-md text-body-md">Support</span>
+        </a>
+      </div>
+      <div class="flex items-center gap-3 mt-4 px-2">
+        <div
+          class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-background font-bold text-sm">A
+        </div>
+        <div class="overflow-hidden">
+          <p class="text-[12px] font-bold truncate">Admin Root</p>
+          <p class="text-[10px] text-on-surface-variant truncate">cluster-admin-01</p>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="flex-1 ml-[240px] flex flex-col h-screen bg-background">
+
+    <!-- TopAppBar -->
+    <header
+      class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant z-40 flex-shrink-0">
+      <div class="flex items-center gap-3">
+        <span class="text-secondary font-bold font-code-sm">Logs</span>
+      </div>
+      <div class="flex items-center gap-4">
+        <button id="export-csv-btn"
+          class="px-4 py-1.5 border border-outline-variant text-on-surface-variant font-body-md text-body-md hover:text-primary transition-all rounded">Export
+          CSV</button>
+        <div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+          <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="logout()"
+            title="Logout"><span class="material-symbols-outlined">logout</span></button>
+          <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()"
+            title="Toggle Theme"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+          <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all relative" id="notif-btn"
+            onclick="toggleNotif()">
+            <span class="material-symbols-outlined">notifications</span>
+            <span id="notif-badge" class="absolute top-1 right-1 w-2 h-2 bg-error rounded-full hidden"></span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div id="notif-panel" class="hidden fixed right-4 top-16 w-96 bg-surface-container border border-outline-variant rounded shadow-2xl z-50 max-h-[70vh] flex flex-col">
+      <div class="flex items-center justify-between px-4 py-3 border-b border-outline-variant">
+        <h3 class="font-bold text-primary text-sm">Notifications</h3>
+        <button class="text-xs text-secondary hover:underline" onclick="markAllNotifRead()">Mark all read</button>
+      </div>
+      <div id="notif-list" class="flex-1 overflow-auto"></div>
+    </div>
+
+    <!-- Filter Bar -->
+    <section
+      class="px-panel-padding py-3 bg-surface-container-low flex flex-col gap-3 border-b border-outline-variant flex-shrink-0">
+      <div class="flex gap-2">
+        <div class="flex-1 relative">
+          <span
+            class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[20px]">search</span>
+          <input id="search-input"
+            class="w-full h-10 bg-surface-container-lowest border border-outline-variant rounded-lg pl-10 pr-4 text-primary font-code-md text-code-md focus:outline-none focus:border-secondary transition-colors placeholder:text-on-surface-variant placeholder:opacity-50"
+            placeholder="Search logs (e.g. status:500 or message:'timeout')..." type="text" />
+        </div>
+        <div class="flex gap-1 h-10">
+          <div class="relative">
+            <button id="time-range-btn"
+              class="h-10 px-4 flex items-center gap-2 border border-outline-variant bg-surface-container rounded-lg text-on-surface-variant hover:bg-surface-container-high transition-colors">
+              <span class="material-symbols-outlined text-[18px]">calendar_today</span>
+              <span class="text-body-md font-body-md" id="time-range-label">All time</span>
+              <span class="material-symbols-outlined text-[18px]">expand_more</span>
+            </button>
+            <div id="time-range-menu"
+              class="hidden absolute right-0 top-full mt-1 w-40 bg-surface-container border border-outline-variant rounded-lg shadow-2xl z-50 overflow-hidden">
+            </div>
+          </div>
+          <button id="run-btn" title="Apply filters"
+            class="px-3 border border-outline-variant bg-surface-container rounded-lg text-on-surface-variant hover:bg-secondary hover:text-background transition-colors">
+            <span class="material-symbols-outlined text-[20px]">play_arrow</span>
+          </button>
+        </div>
+      </div>
+      <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+          <span class="text-label-caps font-label-caps text-on-surface-variant">SERVICE:</span>
+          <select id="service-filter"
+            class="bg-surface-container border border-outline-variant text-primary font-body-md text-body-md focus:ring-0 cursor-pointer hover:border-secondary rounded px-2 py-1" style="color-scheme: light dark;">
+            <option value="">All Services</option>
+            <option value="auth-service">auth-service</option>
+            <option value="payment-gateway">payment-gateway</option>
+            <option value="inventory-api">inventory-api</option>
+            <option value="frontend-web">frontend-web</option>
+            <option value="worker-node-04">worker-node-04</option>
+            <option value="proxy-ingress">proxy-ingress</option>
+            <option value="database-master">database-master</option>
+          </select>
+        </div>
+        <div class="w-px h-4 bg-outline-variant"></div>
+        <div class="flex items-center gap-3">
+          <span class="text-label-caps font-label-caps text-on-surface-variant">LEVEL:</span>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input id="chk-info" checked type="checkbox" class="w-3.5 h-3.5 rounded accent-blue-400" />
+            <span class="inline-flex items-center gap-1 text-code-sm font-label-caps"><span
+                class="w-2 h-2 rounded-full bg-blue-400 inline-block"></span>INFO</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input id="chk-warn" checked type="checkbox" class="w-3.5 h-3.5 rounded accent-amber-400" />
+            <span class="inline-flex items-center gap-1 text-code-sm font-label-caps"><span
+                class="w-2 h-2 rounded-full bg-amber-400 inline-block"></span>WARN</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input id="chk-error" checked type="checkbox" class="w-3.5 h-3.5 rounded accent-red-400" />
+            <span class="inline-flex items-center gap-1 text-code-sm font-label-caps"><span
+                class="w-2 h-2 rounded-full bg-red-400 inline-block"></span>ERROR</span>
+          </label>
+          <label class="flex items-center gap-1.5 cursor-pointer select-none">
+            <input id="chk-debug" type="checkbox" class="w-3.5 h-3.5 rounded accent-gray-400" />
+            <span class="inline-flex items-center gap-1 text-code-sm font-label-caps"><span
+                class="w-2 h-2 rounded-full bg-gray-500 inline-block"></span>DEBUG</span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Log Table -->
+    <section class="flex-1 overflow-auto bg-surface-container-lowest">
+      <table class="w-full border-collapse text-left">
+        <thead class="sticky top-0 bg-surface-container z-10">
+          <tr class="border-b border-outline-variant">
+            <th
+              class="py-2 px-4 text-label-caps font-label-caps text-on-surface-variant w-48 border-r border-outline-variant/30">
+              TIMESTAMP (ISO 8601)</th>
+            <th
+              class="py-2 px-4 text-label-caps font-label-caps text-on-surface-variant w-24 border-r border-outline-variant/30">
+              LEVEL</th>
+            <th
+              class="py-2 px-4 text-label-caps font-label-caps text-on-surface-variant w-40 border-r border-outline-variant/30">
+              SERVICE</th>
+            <th class="py-2 px-4 text-label-caps font-label-caps text-on-surface-variant">MESSAGE</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody" class="font-code-sm text-code-sm"></tbody>
+      </table>
+    </section>
+
+    <!-- Pagination Footer -->
+    <footer
+      class="h-12 flex justify-between items-center px-panel-padding bg-surface border-t border-outline-variant flex-shrink-0">
+      <div class="flex items-center gap-4">
+        <p class="text-code-sm text-on-surface-variant">
+          Showing <span id="showing-range" class="text-primary font-bold">1 - 25</span> of <span id="total-count"
+            class="text-primary font-bold">14,204,112</span> events
+        </p>
+        <div class="h-3 w-px bg-outline-variant"></div>
+        <div class="flex items-center gap-2">
+          <span class="w-2 h-2 rounded-full bg-secondary animate-pulse"></span>
+          <span class="text-code-sm text-secondary font-bold">LIVE FEED ACTIVE</span>
+        </div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="btn-first" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant"><span
+            class="material-symbols-outlined">first_page</span></button>
+        <button id="btn-prev" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant"><span
+            class="material-symbols-outlined">chevron_left</span></button>
+        <div id="page-buttons" class="flex gap-1.5">
+        </div>
+        <button id="btn-next" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant"><span
+            class="material-symbols-outlined">chevron_right</span></button>
+        <button id="btn-last" class="p-1 rounded hover:bg-surface-container-high text-on-surface-variant"><span
+            class="material-symbols-outlined">last_page</span></button>
+      </div>
+    </footer>
+  </main>
+
+  <!-- Log Detail Drawer -->
+  <div id="detail-drawer"
+    class="fixed right-0 top-0 h-full w-[420px] bg-surface-container border-l border-outline-variant z-50 flex flex-col translate-x-full transition-transform duration-300 ease-in-out">
+    <div class="flex items-center justify-between px-panel-padding py-4 border-b border-outline-variant">
+      <h2 class="font-headline-md text-headline-md text-primary text-[16px]">Log Detail</h2>
+      <button id="close-drawer" class="text-on-surface-variant hover:text-primary transition-colors">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div id="drawer-content" class="flex-1 overflow-auto p-panel-padding space-y-4 font-code-sm text-code-sm"></div>
+  </div>
+  <script src="app.js"></script>
+  <script>
+    const SAMPLE_LOGS = [
+      { level: 'info', service: 'auth-service', msg: 'User session validated successfully for UUID: 8842-fe8a-9921', attrs: { user_id: '8842', region: 'eu-west' } },
+      { level: 'error', service: 'payment-gateway', msg: 'Failed to process transaction ID #TX-9022: Upstream timeout after 5000ms', attrs: { transaction_id: 'TX-9022', retries: 3 } },
+      { level: 'info', service: 'inventory-api', msg: 'Cache miss for SKU: "OBS-001". Re-fetching from Postgres cluster...', attrs: { sku: 'OBS-001', region: 'us-east-1' } },
+      { level: 'warn', service: 'frontend-web', msg: 'Client connection latency exceeded 350ms for user@company.com', attrs: { latency_ms: 352, user: 'user@company.com' } },
+      { level: 'info', service: 'frontend-web', msg: 'Hydration completed in 142ms', attrs: { duration_ms: 142 } },
+      { level: 'info', service: 'proxy-ingress', msg: 'GET /api/v1/health status:200 duration:1.2ms', attrs: { status: 200, path: '/api/v1/health' } },
+      { level: 'info', service: 'proxy-ingress', msg: 'GET /api/v1/health status:200 duration:1.2ms', attrs: { status: 200, path: '/api/v1/health' } },
+      { level: 'info', service: 'auth-service', msg: 'Key rotation triggered for vault: prod-west-2', attrs: { vault: 'prod-west-2' } },
+      { level: 'info', service: 'payment-gateway', msg: 'Webhook delivered to stripe.com/events/v2', attrs: { endpoint: 'stripe.com' } },
+      { level: 'warn', service: 'inventory-api', msg: 'DB connection pool nearing capacity (92/100 active)', attrs: { pool_used: 92, pool_max: 100 } },
+      { level: 'info', service: 'frontend-web', msg: 'Hydration completed in 142ms', attrs: { duration_ms: 142 } },
+      { level: 'error', service: 'worker-node-04', msg: 'OOM Killer terminated process: ruby-main [PID: 14221]', attrs: { pid: 14221, process: 'ruby-main' } },
+      { level: 'info', service: 'auth-service', msg: 'New OAuth2 grant issued for client_id: mobile-android', attrs: { client_id: 'mobile-android' } },
+      { level: 'error', service: 'database-master', msg: 'Read-only mode engaged due to disk pressure (>95%)', attrs: { disk_usage_pct: 95 } },
+      { level: 'warn', service: 'inventory-api', msg: 'DB connection pool nearing capacity (92/100 active)', attrs: { pool_used: 92, pool_max: 100 } },
+      { level: 'info', service: 'payment-gateway', msg: 'Webhook delivered to stripe.com/events/v2', attrs: { endpoint: 'stripe.com' } },
+      { level: 'info', service: 'proxy-ingress', msg: 'POST /api/v1/query status:202 duration:44.8ms', attrs: { status: 202, path: '/api/v1/query' } },
+      { level: 'error', service: 'worker-node-04', msg: 'OOM Killer terminated process: ruby-main [PID: 14221]', attrs: { pid: 14221 } },
+      { level: 'warn', service: 'inventory-api', msg: 'DB connection pool nearing capacity (92/100 active)', attrs: { pool_used: 92, pool_max: 100 } },
+      { level: 'info', service: 'auth-service', msg: 'User session validated successfully for UUID: 9931-ab12-cc44', attrs: { user_id: '9931', region: 'us-east-1' } },
+      { level: 'debug', service: 'frontend-web', msg: 'Component tree rendered in 8ms', attrs: { duration_ms: 8 } },
+      { level: 'info', service: 'proxy-ingress', msg: 'PUT /api/v1/config status:200 duration:22.1ms', attrs: { status: 200 } },
+      { level: 'error', service: 'payment-gateway', msg: 'Payment declined — card insufficient funds for TX-8811', attrs: { transaction_id: 'TX-8811' } },
+      { level: 'warn', service: 'database-master', msg: 'Replication lag exceeded 500ms on replica-02', attrs: { lag_ms: 503, replica: 'replica-02' } },
+      { level: 'info', service: 'auth-service', msg: 'Session expired gracefully for user_id: 7712', attrs: { user_id: '7712' } },
+    ];
+
+    const LEVEL_STYLES = {
+      info: { badge: 'bg-blue-500/10 text-blue-400 border border-blue-500/30', row: '', leftBorder: '' },
+      warn: { badge: 'bg-amber-400/10 text-amber-400 border border-amber-400/30', row: 'bg-amber-400/5', leftBorder: 'border-l-2 border-l-amber-500' },
+      error: { badge: 'bg-error-container text-error border border-error/50', row: 'bg-error/5', leftBorder: 'border-l-2 border-l-error' },
+      debug: { badge: 'bg-gray-500/10 text-gray-400 border border-gray-500/30', row: '', leftBorder: '' },
+    };
+
+    let activeLevels = new Set(['info', 'warn', 'error']);
+    let selectedService = '';
+    let searchQuery = '';
+    let selectedRow = null;
+
+    const TIME_RANGES = [
+      { label: 'Last 15m', ms: 15 * 60 * 1000 },
+      { label: 'Last 1h', ms: 60 * 60 * 1000 },
+      { label: 'Last 6h', ms: 6 * 60 * 60 * 1000 },
+      { label: 'Last 24h', ms: 24 * 60 * 60 * 1000 },
+      { label: 'Last 7d', ms: 7 * 24 * 60 * 60 * 1000 },
+      { label: 'All time', ms: null },
+    ];
+    let selectedRange = TIME_RANGES[5];
+
+    let currentPage = 1;
+    const limit = 25;
+    let totalLogs = 0;
+    let logs = [];
+
+    async function renderLogs() {
+      const tbody = document.getElementById('log-tbody');
+      tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-on-surface-variant opacity-60">Loading logs...</td></tr>';
+
+      const params = new URLSearchParams();
+      params.set('limit', limit);
+      params.set('page', currentPage);
+
+      if (selectedService) {
+        params.set('service', selectedService);
+      }
+
+      if (activeLevels.size > 0 && activeLevels.size < 4) {
+        params.set('level', Array.from(activeLevels).join(','));
+      }
+
+      if (searchQuery) {
+        params.set('q', searchQuery);
+      }
+
+      if (selectedRange.ms != null) {
+        params.set('since', new Date(Date.now() - selectedRange.ms).toISOString());
+      }
+
+      const data = await fetchJSON('/logs?' + params.toString());
+      tbody.innerHTML = '';
+
+      if (!data || !data.logs || data.logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-on-surface-variant opacity-60">No logs found</td></tr>';
+        totalLogs = 0;
+        updatePagination();
+        return;
+      }
+
+      logs = data.logs;
+      totalLogs = data.total || logs.length;
+
+      logs.forEach((log, i) => {
+        const s = LEVEL_STYLES[log.level] || LEVEL_STYLES.info;
+        const tr = document.createElement('tr');
+        tr.className = `log-row border-b border-outline-variant/10 group ${s.row} ${s.leftBorder}`;
+        tr.dataset.index = i;
+
+        const logTime = new Date(log.timestamp).toISOString().replace('T', ' ').slice(0, 23);
+
+        tr.innerHTML = `
+        <td class="py-2 px-4 text-on-surface-variant border-r border-outline-variant/10 whitespace-nowrap">${logTime}</td>
+        <td class="py-2 px-4 border-r border-outline-variant/10"><span class="status-badge ${s.badge}">${log.level.toUpperCase()}</span></td>
+        <td class="py-2 px-4 text-secondary border-r border-outline-variant/10">${log.service}</td>
+        <td class="py-2 px-4 ${log.level === 'error' ? 'text-error font-bold' : 'text-on-surface group-hover:text-primary'} truncate max-w-0 w-full">${log.message}</td>
+      `;
+        tr.addEventListener('click', () => openDrawer(log, tr, i));
+        tbody.appendChild(tr);
+      });
+
+      updatePagination();
+    }
+
+    function openDrawer(log, tr, i) {
+      if (selectedRow) selectedRow.classList.remove('selected');
+      selectedRow = tr;
+      tr.classList.add('selected');
+      const s = LEVEL_STYLES[log.level] || LEVEL_STYLES.info;
+      const drawer = document.getElementById('detail-drawer');
+      const content = document.getElementById('drawer-content');
+
+      const logTime = new Date(log.timestamp).toISOString().replace('T', ' ').slice(0, 23);
+
+      content.innerHTML = `
+      <div class="space-y-3">
+        <div class="flex items-center gap-2"><span class="status-badge ${s.badge}">${log.level.toUpperCase()}</span><span class="text-secondary">${log.service}</span></div>
+        <p class="text-on-surface leading-relaxed">${log.message}</p>
+        <div class="border-t border-outline-variant pt-3 space-y-2">
+          <p class="text-on-surface-variant opacity-60 text-label-caps font-label-caps">TIMESTAMP</p>
+          <p class="text-primary font-code-md">${logTime}</p>
+        </div>
+        <div class="border-t border-outline-variant pt-3 space-y-2">
+          <p class="text-on-surface-variant opacity-60 text-label-caps font-label-caps">ATTRIBUTES</p>
+          <pre class="bg-surface-container-lowest p-3 rounded text-secondary overflow-x-auto">${JSON.stringify(log.attributes || {}, null, 2)}</pre>
+        </div>
+      </div>
+    `;
+      drawer.classList.remove('translate-x-full');
+    }
+
+    function updatePagination() {
+      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
+      if (currentPage > totalPages) {
+        currentPage = totalPages;
+      }
+
+      const startRange = (currentPage - 1) * limit + 1;
+      const endRange = Math.min(currentPage * limit, totalLogs);
+
+      const rangeSpan = document.getElementById('showing-range');
+      if (rangeSpan) {
+        rangeSpan.textContent = totalLogs > 0 ? `${startRange.toLocaleString()} - ${endRange.toLocaleString()}` : '0';
+      }
+
+      const countSpan = document.getElementById('total-count');
+      if (countSpan) {
+        countSpan.textContent = totalLogs.toLocaleString();
+      }
+
+      const btnFirst = document.getElementById('btn-first');
+      const btnPrev = document.getElementById('btn-prev');
+      const btnNext = document.getElementById('btn-next');
+      const btnLast = document.getElementById('btn-last');
+
+      if (currentPage === 1) {
+        btnFirst.classList.add('opacity-50', 'cursor-not-allowed');
+        btnFirst.disabled = true;
+        btnPrev.classList.add('opacity-50', 'cursor-not-allowed');
+        btnPrev.disabled = true;
+      } else {
+        btnFirst.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnFirst.disabled = false;
+        btnPrev.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnPrev.disabled = false;
+      }
+
+      if (currentPage === totalPages) {
+        btnNext.classList.add('opacity-50', 'cursor-not-allowed');
+        btnNext.disabled = true;
+        btnLast.classList.add('opacity-50', 'cursor-not-allowed');
+        btnLast.disabled = true;
+      } else {
+        btnNext.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnNext.disabled = false;
+        btnLast.classList.remove('opacity-50', 'cursor-not-allowed');
+        btnLast.disabled = false;
+      }
+
+      const pageButtons = document.getElementById('page-buttons');
+      if (!pageButtons) return;
+      pageButtons.innerHTML = '';
+
+      const addPageBtn = (pageNum, active = false) => {
+        const span = document.createElement('span');
+        span.className = `min-w-8 h-8 px-1.5 flex items-center justify-center rounded font-bold text-code-sm cursor-pointer transition-colors`;
+        if (active) {
+          span.className += ` bg-secondary text-background`;
+        } else {
+          span.className += ` hover:bg-surface-container-high text-on-surface-variant`;
+        }
+        span.textContent = pageNum;
+        span.addEventListener('click', () => {
+          if (currentPage !== pageNum) {
+            currentPage = pageNum;
+            renderLogs();
+          }
+        });
+        pageButtons.appendChild(span);
+      };
+
+      const addEllipsis = () => {
+        const span = document.createElement('span');
+        span.className = `w-8 h-8 flex items-center justify-center text-on-surface-variant`;
+        span.textContent = '...';
+        pageButtons.appendChild(span);
+      };
+
+      if (totalPages <= 5) {
+        for (let p = 1; p <= totalPages; p++) {
+          addPageBtn(p, p === currentPage);
+        }
+      } else {
+        if (currentPage <= 3) {
+          addPageBtn(1, currentPage === 1);
+          addPageBtn(2, currentPage === 2);
+          addPageBtn(3, currentPage === 3);
+          addPageBtn(4, currentPage === 4);
+          addEllipsis();
+          addPageBtn(totalPages, false);
+        } else if (currentPage >= totalPages - 2) {
+          addPageBtn(1, false);
+          addEllipsis();
+          addPageBtn(totalPages - 3, false);
+          addPageBtn(totalPages - 2, currentPage === totalPages - 2);
+          addPageBtn(totalPages - 1, currentPage === totalPages - 1);
+          addPageBtn(totalPages, currentPage === totalPages);
+        } else {
+          addPageBtn(1, false);
+          addEllipsis();
+          addPageBtn(currentPage - 1, false);
+          addPageBtn(currentPage, true);
+          addPageBtn(currentPage + 1, false);
+          addEllipsis();
+          addPageBtn(totalPages, false);
+        }
+      }
+    }
+
+    document.getElementById('btn-first').addEventListener('click', () => {
+      if (currentPage !== 1) {
+        currentPage = 1;
+        renderLogs();
+      }
+    });
+
+    document.getElementById('btn-prev').addEventListener('click', () => {
+      if (currentPage > 1) {
+        currentPage--;
+        renderLogs();
+      }
+    });
+
+    document.getElementById('btn-next').addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
+      if (currentPage < totalPages) {
+        currentPage++;
+        renderLogs();
+      }
+    });
+
+    document.getElementById('btn-last').addEventListener('click', () => {
+      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
+      if (currentPage !== totalPages) {
+        currentPage = totalPages;
+        renderLogs();
+      }
+    });
+
+    document.getElementById('close-drawer').addEventListener('click', () => {
+      document.getElementById('detail-drawer').classList.add('translate-x-full');
+      if (selectedRow) { selectedRow.classList.remove('selected'); selectedRow = null; }
+    });
+
+    ['info', 'warn', 'error', 'debug'].forEach(lvl => {
+      document.getElementById('chk-' + lvl).addEventListener('change', function () {
+        if (this.checked) activeLevels.add(lvl); else activeLevels.delete(lvl);
+        currentPage = 1;
+        renderLogs();
+      });
+    });
+
+    document.getElementById('service-filter').addEventListener('change', function () {
+      selectedService = this.value;
+      currentPage = 1;
+      renderLogs();
+    });
+
+    document.getElementById('search-input').addEventListener('input', function () {
+      searchQuery = this.value;
+      currentPage = 1;
+      renderLogs();
+    });
+
+    const timeRangeBtn = document.getElementById('time-range-btn');
+    const timeRangeMenu = document.getElementById('time-range-menu');
+    const timeRangeLabel = document.getElementById('time-range-label');
+
+    timeRangeMenu.innerHTML = TIME_RANGES.map((r, i) => `
+      <button type="button" data-range-index="${i}"
+        class="w-full text-left px-4 py-2 text-body-md font-body-md hover:bg-surface-container-high transition-colors ${r === selectedRange ? 'text-secondary font-bold' : 'text-on-surface-variant'}">
+        ${r.label}
+      </button>
+    `).join('');
+
+    timeRangeMenu.querySelectorAll('[data-range-index]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedRange = TIME_RANGES[parseInt(btn.dataset.rangeIndex, 10)];
+        timeRangeLabel.textContent = selectedRange.label;
+        timeRangeMenu.querySelectorAll('[data-range-index]').forEach(b => {
+          b.classList.toggle('text-secondary', b === btn);
+          b.classList.toggle('font-bold', b === btn);
+          b.classList.toggle('text-on-surface-variant', b !== btn);
+        });
+        timeRangeMenu.classList.add('hidden');
+        currentPage = 1;
+        renderLogs();
+      });
+    });
+
+    timeRangeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      timeRangeMenu.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (!timeRangeMenu.classList.contains('hidden') && !timeRangeMenu.contains(e.target) && e.target !== timeRangeBtn) {
+        timeRangeMenu.classList.add('hidden');
+      }
+    });
+
+    document.getElementById('run-btn').addEventListener('click', () => {
+      currentPage = 1;
+      renderLogs();
+    });
+
+    document.getElementById('export-csv-btn').addEventListener('click', () => {
+      if (!logs.length) {
+        window.showToast?.('No logs to export', 'info');
+        return;
+      }
+      const rows = logs.map(log => [
+        new Date(log.timestamp).toISOString(),
+        log.level,
+        log.service,
+        log.message,
+      ]);
+      downloadCSV(`logs-export-${Date.now()}.csv`, ['Timestamp', 'Level', 'Service', 'Message'], rows);
+      window.showToast?.(`Exported ${logs.length} logs`, 'success');
+    });
+
+    // Let the shared Add Log modal refresh this table after a successful submit
+    window.refreshLogsExplorer = renderLogs;
+
+    // Initial render
+    renderLogs();
+    loadNotifications();
+    setInterval(loadNotifications, 30000);
+  </script>
+</body>
+
+</html>

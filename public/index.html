@@ -2,12 +2,12 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Lumina Logs</title>
+  <title>Obsidian Log Engine</title>
 </head>
 <body>
   <script>
     fetch('/auth/session')
-      .then(r => { window.location.href = r.ok ? '/dashboard' : '/login.html'; })
+      .then(r => { window.location.href = r.ok ? '/logs-explorer' : '/login.html'; })
       .catch(() => { window.location.href = '/login.html'; });
   </script>
 </body>

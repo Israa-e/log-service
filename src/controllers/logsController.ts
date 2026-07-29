@@ -9,6 +9,10 @@ export async function createLogs(
 
     try {
 
+        if (!req.body || !Array.isArray(req.body.logs)) {
+            return res.status(400).json({ error: "body must contain a 'logs' array" });
+        }
+
         const result = await insertLogs(req.body.logs);
 
         res.status(result.accepted > 0 ? 200 : 400)

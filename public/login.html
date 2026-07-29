@@ -1,34 +1,29 @@
 <!DOCTYPE html>
-<html class="dark" lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lumina Logs — Login</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="tailwind-config.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    body { font-family: 'Inter', sans-serif; }
-  </style>
-</head>
-<body class="bg-background text-on-surface min-h-screen flex items-center justify-center p-4">
-  <div class="glass-card rounded-2xl p-10 w-full max-w-md space-y-8">
+<html class="dark" lang="en"><head>
+<meta charset="UTF-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log Engine — Login</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tailwind-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Hanken+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+<style>
+body { background-color: #020617; color: #dae2fd; font-family: 'Geist', sans-serif; }
+html.light body { background-color: #f8f9ff; color: #0b1c30; }
+.material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; vertical-align: middle; }
+</style></head>
+<body class="min-h-screen flex items-center justify-center p-4">
+  <div class="bg-surface border border-outline-variant rounded p-8 w-full max-w-sm space-y-6">
     <div class="text-center space-y-2">
-      <div class="w-14 h-14 rounded-2xl bg-primary-container flex items-center justify-center mx-auto">
-        <span class="material-symbols-outlined text-on-primary-container text-3xl" style="font-variation-settings:'FILL'1">monitoring</span>
-      </div>
-      <h1 class="text-3xl font-bold text-primary">Lumina Logs</h1>
-      <p class="text-on-surface-variant text-sm">Observability Platform</p>
+      <div class="w-12 h-12 bg-primary rounded flex items-center justify-center mx-auto"><span class="material-symbols-outlined text-background text-2xl" style="font-variation-settings:'FILL'1">layers</span></div>
+      <h1 class="font-headline-md text-headline-md font-bold text-primary">Obsidian Log</h1>
+      <p class="text-body-md text-on-surface-variant">v2.4.0-stable</p>
     </div>
     <div class="space-y-4">
-      <div>
-        <label class="text-sm font-medium text-on-surface-variant block mb-1">Password</label>
-        <input id="password" type="password" class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-3 text-on-surface placeholder:text-on-surface-variant/50 focus:ring-2 focus:ring-primary/50 focus:border-transparent outline-none transition-all" placeholder="Enter your password">
-      </div>
-      <p id="error" class="text-error text-sm hidden">Wrong password</p>
-      <button onclick="doLogin()" class="w-full py-3 bg-primary text-on-primary font-bold rounded-xl hover:brightness-110 active:scale-[0.98] transition-all">Sign In</button>
+      <div><label class="text-label-caps text-on-surface-variant block mb-1">Password</label><input id="password" type="password" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="Enter your password"></div>
+      <p id="error" class="text-error text-code-sm hidden">Wrong password</p>
+      <button onclick="doLogin()" class="w-full py-2.5 bg-primary text-on-primary font-bold rounded hover:opacity-90 active:scale-[0.98] transition-all text-body-md">Sign In</button>
     </div>
   </div>
   <script>
@@ -41,13 +36,10 @@
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ password })
         });
-        if (res.ok) { window.location.href = "/dashboard"; }
+        if (res.ok) { window.location.href = "/logs-explorer"; }
         else { document.getElementById("error").classList.remove("hidden"); }
-      } finally {
-        btn.disabled = false;
-      }
+      } finally { btn.disabled = false; }
     }
     document.getElementById("password").addEventListener("keypress", e => { if (e.key === "Enter") doLogin(); });
   </script>
-</body>
-</html>
+</body></html>
