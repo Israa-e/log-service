@@ -2,7 +2,7 @@
 
 A high-performance log ingestion and query service, inspired by Datadog and Grafana Loki. Ingests structured logs at scale, stores them in TimescaleDB, and provides a rich dashboard for search, aggregation, and retention management.
 
-![Dashboard](docs/screenshots/dashboard.png)
+![Logs](screens/logs.png)
 
 ## Tech Stack
 
@@ -28,22 +28,22 @@ docker compose up -d --build
 ### Logs Explorer
 Advanced search, filtering by service/level/message, time range selection, and a detail drawer for individual log entries.
 
-![Logs Explorer](docs/screenshots/logs-explorer.png)
+![Logs Explorer](screens/addLogs.png)
 
 ### Analytics & Metrics
 Interactive ECharts visualizations — throughput over time, severity distribution, error clustering, and storage breakdown by service.
 
-![Analytics](docs/screenshots/analytics.png)
+![Analytics](screens/Metrics.png)
 
 ### Retention Management
 View total events, retention period, active services, and last retention run. Trigger manual cleanup or configure the auto-schedule.
 
-![Retention](docs/screenshots/retention.png)
+![Retention](screens/retention.png)
 
-### Settings
-Cluster configuration, ingestion pipeline controls, storage tuning, and system status overview.
+### AI Support Chat
+Real-time AI-powered support assistant for cluster configuration, queries, and retention policies.
 
-![Settings](docs/screenshots/settings.png)
+![AI Support](screens/AiSupport.png)
 
 ## API Contract
 
