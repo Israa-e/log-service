@@ -109,7 +109,10 @@ src/index.ts
 ### الفهارس (Indexes)
 - `idx_logs_service` — B-tree على service, timestamp
 - `idx_logs_level` — B-tree على level, timestamp
-- `idx_logs_attributes` — GIN index للبحث في JSONB
+- `idx_logs_message_trgm` — GIN trigram index للبحث النصي (`ILIKE '%q%'`) في message
+- ما فيه index على attributes (تم حذفه عمداً) — الفلترة تعتمد على `attributes ->> key = value`
+  (نص لنص) بدل `@>` containment، ولأن الـ key ديناميكي بكل request ما ينبنى له index ثابت؛
+  التعويض هو TimescaleDB chunk exclusion عبر النطاق الزمني المطلوب (since/until)
 
 ---
 
@@ -137,7 +140,7 @@ Body: { "logs": [{ "service": "checkout", "level": "error", "message": "Payment 
 Query: ?service=checkout&level=error&since=...&until=...&q=payment&limit=50&cursor=base64...
 ```
 - فلاتر: service, level, q (search in message), since/until (نطاق زمني)
-- `attr.<key>` للبحث في attributes — يستخدم GIN index
+- `attr.<key>` للبحث في attributes — عن طريق `attributes ->> key = value`، محمي بـ chunk exclusion مش index
 - **Cursor pagination** (keyset pagination): أسرع من OFFSET لأنها تستخدم `WHERE (timestamp, id) < (?, ?)`
 - يرجع: `{ "logs": [...], "next_cursor": "base64..." }`
 
@@ -221,7 +224,7 @@ Body: { "service": "checkout", "threshold": 10, "window_minutes": 5, "webhook_ur
 OFFSET يقرأ كل الصفوف ويرمي اللي ما يحتاج — بطيء جداً مع البيانات الكبيرة. Cursor يستخدم `WHERE (timestamp, id) < (?, ?)` ويستفيد من الفهارس — أسرع بكثير.
 
 ### ليش JSONB للأتريبيوتس؟
-كل log ممكن يكون عنده خصائص مختلفة. JSONB يسمح بتخزين خصائص ديناميكية بدون تغيير schema. GIN index يخلي البحث فيهم سريع.
+كل log ممكن يكون عنده خصائص مختلفة. JSONB يسمح بتخزين خصائص ديناميكية بدون تغيير schema. البحث فيهم (`attr.<key>`) يعتمد على `->>` + chunk exclusion بدل index (GIN ما بيسرّع `->>`، وتم حذفه).
 
 ### ليش مو React للداشبورد؟
 المشروع بسيط — dashboard بدون state management معقد. HTML + Tailwind أسرع في التطوير وأخف وزناً. كل الصفحات static files تخدم من السيرفر.
@@ -322,4 +325,4 @@ docker-compose.yml
 
 ## 12. خلاصة للمقابلة
 
-> "هذا مشروع log ingestion service مبني على Node.js/Express مع TimescaleDB. استخدمنا TypeScript للـ type safety، Docker للتطوير والاختبار. الداشبورد مبني باستخدام Tailwind CSS مع CSS variables عشان الـ dark/light theme. أهم النقاط: batch ingestion للأداء، cursor pagination للتصفح، GIN index للبحث في JSONB، retention job للحذف الدوري مع notifications. المشروع يدعم partial acceptance للـ logs و webhook-based alerting مع نظام إشعارات متكامل."
+> "هذا مشروع log ingestion service مبني على Node.js/Express مع TimescaleDB. استخدمنا TypeScript للـ type safety، Docker للتطوير والاختبار. الداشبورد مبني باستخدام Tailwind CSS مع CSS variables عشان الـ dark/light theme. أهم النقاط: batch ingestion للأداء عن طريق unnest()، cursor pagination للتصفح، GIN trigram index للبحث النصي في message (مع chunk exclusion بدل index للفلترة على attributes)، retention job للحذف الدوري مع notifications. المشروع يدعم partial acceptance للـ logs و webhook-based alerting مع نظام إشعارات متكامل."

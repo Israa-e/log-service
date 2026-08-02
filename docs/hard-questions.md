@@ -6,19 +6,30 @@
 
 ## 🧠 الـ 10 أسئلة الأصعب
 
-### سؤال 1: "ليه اخترتي `attributes @> '{"key": value}'::jsonb` وما استعملتي `->>` عادي؟"
+### سؤال 1: "ليه اخترتي `attributes ->> key = value` وما استعملتي `@>` مع GIN index؟"
 
-هذا سؤال خبيث — بيختبر إذا فهمتي GIN index.
+هذا سؤال خبيث — بيختبر إذا فاهمة الفرق بين containment (`@>`) و key extraction (`->>`)،
+ومتى الـ index يفيد فعلاً.
 
 **الجواب:**
 ```
-الـ @> يستخدم GIN index — وهذا index خاص بالـ JSONB بيفحص containment بسرعة.
-أما `->>` تستخرج قيمة كنص — وما تستخدم GIN index أبداً.
+@> بيسرّعه GIN index — بس هذا الـ index بيفحص containment ("هل هالمستند يحوي هالقيمة")،
+مش مقارنة key معين بقيمة معينة بشكل ديناميكي. والمشكلة الأكبر: attr.<key> جاي من query
+string المستخدم — يعني الـ key نفسه ديناميكي بكل request. GIN على attributes بيسرّع
+@> بس ما فيه طريقة تبني منه index ثابت لمفتاح متغير.
 
-يعني لو استعملت `attributes->>'key' = 'value'` — كان راح يمسح الـ table كامل (sequential scan).
-أما @> فيستخدم GIN index ويرجع النتيجة بسرعة.
+->> بترجع القيمة كنص وتقارنها مباشرة — مافيها index يسرّعها لأن نفس السبب (key ديناميكي)،
+بس هي الاختيار الصح لأن الدلالة (semantics) المطلوبة بالـ spec هي مقارنة نصية بسيطة
+(attribute values تتقارن كـ strings حتى لو كانت أصلها number/boolean).
 
-في logsService.ts سطر 170: attributes @> $${paramIndex}::jsonb
+فبدل ما نعتمد على index غير موجود، اعتمدنا على TimescaleDB chunk exclusion:
+كل استعلام attr.<key> لازم يترافق مع since/until، فبوستجرس يستبعد الـ chunks الكاملة
+اللي برا النطاق الزمني قبل ما يوصل لعمود attributes أصلاً — فالمسح الفعلي محدود
+بالبيانات جوا النطاق الزمني، مش الجدول كامل.
+
+في indexes.sql: `DROP INDEX IF EXISTS idx_logs_attributes` — الـ GIN القديم انحذف
+عمداً لأنه كان بيفيد @> بس مش الاستعلام الفعلي (->>). وفي logsService.ts سطر 197:
+`attributes ->> $${paramIndex} = $${paramIndex + 1}`
 ```
 
 ### سؤال 2: "في استعلام aggregate مع `bucket=1m` و `group_by=service` — شو بيصير لو في مليون صف؟ كيف تضمنين تحت 1 ثانية؟"
@@ -27,10 +38,10 @@
 ```
 ثلاث عوامل تخليها سريعة:
 1. time_bucket من TimescaleDB — يستخدم hypertable sorting على timestamp
-2. الفلاتر تستخدم indexes:
-   - service → idx_logs_service (السطر 2 في indexes.sql)
-   - level → idx_logs_level (السطر 5)
-   - attr.* → GIN idx_logs_attributes (السطر 8)
+2. الفلاتر تستخدم indexes لما تكون service/level:
+   - service → idx_logs_service (service, timestamp DESC)
+   - level → idx_logs_level (level, timestamp DESC)
+   - attr.* → مافيها index (اتحذف)، بتعتمد على chunk exclusion من since/until بدلها
 3. الـ Sequential scan بعد الفلترة بيكون محدود
 
 الأهم: لأن عندي (timestamp, id) composite key و hypertable مقسم على timestamp — 
@@ -100,15 +111,18 @@ HTTP status 400 لأن accepted = 0 (logsController.ts سطر 14).
 1. service=checkout → idx_logs_service (service, timestamp DESC)
    PostgreSQL بيسوي Index Scan على الأساس
    
-2. attr.region=eu-west → idx_logs_attributes (GIN on attributes)
-   GIN index للـ JSONB containment check
+2. attr.region=eu-west → مافيه index (اتحذف الـ GIN القديم)
+   attributes ->> 'region' = 'eu-west' — بدون since/until هذا Sequential Scan
+   على الجدول كامل (شوفي Known Limitations بالـ README — هاي بالضبط الحالة
+   المحكية فيها)
    
-3. q=declined → لا index
-   message ILIKE '%declined%' — هذا Full Table Scan ضروري
-   (PostgreSQL ما يدعم ILIKE index بدون extension)
+3. q=declined → لا index (فقط idx_logs_message_trgm يخدم ILIKE، وما مستخدم هون
+   إذا كانت query خفيفة، أو Bitmap Index Scan عليه لو استخدم)
+   message ILIKE '%declined%'
    
-الـ query planner بيقرر: يبدأ بـ index على service (الأكثر تحديداً)
-ثم يطبق attr filter على النتائج، وأخيراً ILIKE.
+الـ query planner بيقرر: يبدأ بـ Index Scan على service (الأكثر تحديداً)
+ثم يطبق باقي الفلاتر (attr, q) كـ filter على النتائج بعد الفهرسة الأولى —
+مافي index ثاني يستخدمه هون لأنه ما مرفق since/until.
 ```
 
 ### سؤال 7: "ليه ما استعملتي UUID للـ id وجعلتيه SERIAL integer؟"
@@ -140,16 +154,19 @@ if (v != null && typeof v === "object")
 لو بدنا ندعم nested:
 1. نخلي attributes تقبل nested objects
 2. في الـ query:
-   - attr.user.name → attributes @> '{"user": {"name": "value"}}'::jsonb
-   - بس GIN index = دعم كامل لـ containment مهما كان العمق
+   - attr.user.name → لازم نفصل الـ key على النقاط ونستخدم path extraction:
+     attributes #>> '{user,name}' = value (بدل ->> اللي بتشتغل بس مع top-level key)
+   - نفس القيد القديم: ما فيه index عام يسرّع #>> لأن الـ path نفسه ديناميكي —
+     برضو رح نعتمد على chunk exclusion، مش على index جديد
 
 التحدي:
-- البساطة: الـ @> يشتغل مع أي عمق
-- التعقيد: الـ load testing والخ properties
+- تعقيد الـ query builder: لازم يفرّق بين top-level key (->>) و nested path (#>>)
+- التعقيد: الـ load testing وقياس تأثير الـ path parsing
 
 التغيير اللي أسويه:
 - أشيل الـ validation اللي يمنع nested (السطور 65-74)
-- الـ query builder ما يحتاج تغيير — @> يشتغل مع أي عمق
+- الـ query builder يحتاج تغيير: يفحص إذا الـ key فيه نقطة، يبني path array، ويستخدم #>>
+  بدل ->>
 ```
 
 ### سؤال 9: "عندي 10M logs ونظامك بطيء — شو أول 3 أشياء تفحصيها؟"
@@ -158,7 +175,9 @@ if (v != null && typeof v === "object")
 ```
 1. EXPLAIN ANALYZE
    أشوف هل الـ queries تستخدم indexes ولا لا.
-   متوقع: Index Scan على service/level، Bitmap Scan على GIN
+   متوقع: Index Scan على service/level، Sequential Scan لو الفلتر attr.<key>
+   بدون since/until (مافيه index يغطيه)، Bitmap Index Scan على idx_logs_message_trgm
+   لو فيه q=
 
 2. checkpoint configuration
    PostgreSQL default checkpoint_segments يمكن صغير

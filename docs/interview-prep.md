@@ -41,7 +41,13 @@ logs يستخدم TimescaleDB hypertable مقسم على timestamp — هذا ي
 ```
 لأن كل log ممكن يكون عنده خصائص مختلفة (user_id, region, retries, ip...).
 JSONB يسمح بتخزين خصائص ديناميكية بدون تغيير schema كل مرة.
-وفيه GIN index (السطر 8 في indexes.sql) يخلي البحث جوا الـ JSON سريع.
+
+مافي GIN index على attributes — تم حذفه عمداً (`DROP INDEX IF EXISTS idx_logs_attributes`
+في indexes.sql). فلترة `attr.<key>` تستخدم `attributes ->> $key = $value` (نص مقارن بنص،
+عشان الأنواع المختلطة string/number/boolean تتقارن صح). GIN بيسرّع بس عامل الـ containment
+`@>`، مش `->>`، والمفتاح نفسه ديناميكي حسب كل request فما بينبنى له index ثابت. بدلها بنعتمد
+على TimescaleDB chunk exclusion: أي فلتر لازم يجي مع since/until، فبوستجرس يتجاهل الـ chunks
+اللي برا النطاق الزمني قبل ما يلمس attributes أصلاً.
 
 البديل كان EAV (entity-attribute-value) — بس JSONB أسرع وأسهل.
 ```
@@ -51,11 +57,13 @@ JSONB يسمح بتخزين خصائص ديناميكية بدون تغيير sc
 افتحي `src/db/indexes.sql` وقولي:
 
 ```
-ثلاث indexes:
+ثلاث indexes فعلية (زائد hypertable partitioning تلقائي حسب timestamp):
 
 1. idx_logs_service (service, timestamp DESC) — للبحث حسب الخدمة
 2. idx_logs_level (level, timestamp DESC) — للبحث حسب level
-3. idx_logs_attributes (GIN on attributes) — للبحث في JSONB
+3. idx_logs_message_trgm (GIN trigram على message) — للبحث بـ ILIKE '%q%'
+
+مافي index على attributes — تم حذفه (chunk exclusion كافي، شوفي سؤال 2).
 
 و cursor pagination بدال OFFSET (في logsService.ts السطر 176-181):
 cursor يشفر (timestamp, id) كـ base64 ويستخدم 
@@ -134,19 +142,19 @@ createNotification("retention", "Retention Run Complete", ...)
 
 ### 8. "كيف تتعاملين مع attr.* فلاتر؟"
 
-افتحي `src/services/logsService.ts` السطور 5-11 و 165-174 وقولي:
+افتحي `src/services/logsService.ts` السطور 194-201 وقولي:
 
 ```
-فيه function coerceAttrValue (السطر 5):
-  - "true" → true boolean
-  - "false" → false boolean
-  - "123" → 123 number
-  - غير كذا → string
+for (const key in query) if (key.startsWith("attr."))
+  attrKey = key.slice(5)  // اسم الـ attribute بعد "attr."
+  conditions.push(`attributes ->> $paramIndex = $paramIndex+1`)
+  values.push(attrKey, query[key])
 
-في query building (السطر 165):
-  for (const key in query) if (key.startsWith("attr."))
-  يستخدم attributes @> '{"key": value}'::jsonb
-  هذا يستغل GIN index.
+يعني المقارنة كلها نصية (attributes ->> key بترجع text)، وباراميترز
+(attrKey والقيمة) مو string concatenation — آمنة من SQL injection.
+
+مافي GIN index هون (اتحذف، شوفي سؤال 2) — الحماية من full scan تجي من
+إن الفلتر لازم يترافق مع since/until فيستفيد من chunk exclusion.
 ```
 
 ### 9. "كيف تحمين من SQL injection؟"
@@ -231,7 +239,7 @@ parameters، سواء array عادي أو array-per-column مع unnest.
 > 
 > "فيه alert system يراقب عدد الأخطاء ويرسل webhooks وينشئ notifications، و notifications system بيعرضها لمستخدم الداشبورد."
 > 
-> "تحت الـ load، استخدمت indexes مدروسة (B-tree ع service/level مع timestamp DESC, GIN للـ JSONB) عشان أضمن الأداء."
+> "تحت الـ load، استخدمت indexes مدروسة (B-tree ع service/level مع timestamp DESC، GIN trigram على message للبحث النصي) — وما استخدمت index على attributes لأنه مافي index بيسرّع `->>` مع مفتاح ديناميكي، فاعتمدت على chunk exclusion بدلها."
 
 ---
 
