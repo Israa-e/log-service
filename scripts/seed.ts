@@ -18,23 +18,37 @@ const pool = new Pool({
 
 const SERVICES = ["checkout", "auth", "inventory-api", "payment-gateway", "frontend-web", "worker-node", "proxy-ingress", "database-master"];
 const LEVELS   = ["debug", "info", "info", "info", "warn", "warn", "error"] as const;
-const MESSAGES = [
-  "User session validated successfully",
-  "Failed to process transaction: upstream timeout",
-  "Cache miss — re-fetching from Postgres cluster",
-  "Client connection latency exceeded 350ms",
-  "Hydration completed",
-  "GET /api/v1/health status:200 duration:1.2ms",
-  "Key rotation triggered for vault",
-  "Webhook delivered to stripe.com",
-  "DB connection pool nearing capacity (92/100 active)",
-  "OOM Killer terminated process",
-  "New OAuth2 grant issued for client_id: mobile-android",
-  "Read-only mode engaged due to disk pressure (>95%)",
-  "Payment declined — card insufficient funds",
-  "Request rate-limited for IP 203.0.113.42",
-  "Config reload triggered via SIGHUP",
-];
+
+const MESSAGES_BY_LEVEL: Record<string, string[]> = {
+  debug: [
+    "DB query executed in 2.3ms",
+    "Cache hit for key: user_1234",
+    "Webhook POST queued to stripe.com",
+    "GC paused for 14ms",
+    "Header X-Request-ID: req-a1b2c3",
+  ],
+  info: [
+    "User session validated successfully",
+    "Hydration completed",
+    "Config reload triggered via SIGHUP",
+    "Key rotation triggered for vault",
+    "New OAuth2 grant issued for client_id: mobile-android",
+  ],
+  warn: [
+    "DB connection pool nearing capacity (92/100 active)",
+    "Client connection latency exceeded 350ms",
+    "Read-only mode engaged due to disk pressure (>95%)",
+    "Cache miss — re-fetching from Postgres cluster",
+    "Request rate-limited for IP 203.0.113.42",
+  ],
+  error: [
+    "Payment declined — card insufficient funds",
+    "Failed to process transaction: upstream timeout",
+    "OOM Killer terminated process",
+    "Connection refused to upstream service",
+    "Disk usage at 97% — automatic cleanup initiated",
+  ],
+};
 
 const TOTAL_ROWS  = 1_000_000;
 const BATCH_SIZE  = 1_000;
@@ -73,12 +87,13 @@ async function seed() {
 
     for (let i = 0; i < batchSize; i++) {
       const service = randomElement(SERVICES);
+      const level = randomElement(LEVELS);
       placeholders.push(`($${idx}, $${idx+1}, $${idx+2}, $${idx+3}, $${idx+4})`);
       values.push(
         randomTimestamp().toISOString(),
-        randomElement(LEVELS),
+        level,
         service,
-        randomElement(MESSAGES),
+        randomElement(MESSAGES_BY_LEVEL[level]!),
         JSON.stringify(randomAttributes(service))
       );
       idx += 5;

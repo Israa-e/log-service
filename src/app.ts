@@ -46,6 +46,13 @@ app.use("/auth", authRouter);
 app.use("/notifications", notificationsRouter);
 app.use("/support", supportRouter);
 
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.type === "entity.parse.failed" || err instanceof SyntaxError) {
+    return res.status(400).json({ error: "malformed JSON" });
+  }
+  next(err);
+});
+
 startRetentionJob();
 startAlertJob();
 export default app;

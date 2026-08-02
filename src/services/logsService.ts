@@ -15,6 +15,65 @@ interface InsertResult {
   rejected: { index: number; reason: string }[];
 }
 
+type ValidationResult =
+  | { valid: true; row: (string | null)[] }
+  | { valid: false; reason: string };
+
+export function validateLogEntry(log: LogEntry, now: number = Date.now()): ValidationResult {
+    if (typeof log !== "object" || log === null || Array.isArray(log)) {
+        return { valid: false, reason: "entry must be an object" };
+    }
+
+    if (!log.timestamp) {
+        return { valid: false, reason: "timestamp is required" };
+    }
+
+    const ts = log.timestamp;
+    const time = new Date(ts);
+    if (isNaN(time.getTime())) {
+        return { valid: false, reason: "invalid timestamp" };
+    }
+
+    const fiveMinutesFromNow = now + 5 * 60 * 1000;
+    if (time.getTime() > fiveMinutesFromNow) {
+        return { valid: false, reason: "timestamp too far in the future" };
+    }
+
+    if (!VALID_LEVELS.includes(log.level)) {
+        return { valid: false, reason: `invalid level: '${log.level}'` };
+    }
+
+    if (typeof log.service !== "string" || log.service.trim() === "") {
+        return { valid: false, reason: "service is required" };
+    }
+
+    if (typeof log.message !== "string" || log.message.trim() === "") {
+        return { valid: false, reason: "message is required" };
+    }
+
+    if (log.attributes != null) {
+        if (typeof log.attributes !== "object" || Array.isArray(log.attributes)) {
+            return { valid: false, reason: "attributes must be a flat object" };
+        }
+        for (const [k, v] of Object.entries(log.attributes)) {
+            if (v != null && typeof v === "object") {
+                return { valid: false, reason: `nested object in attribute '${k}'` };
+            }
+        }
+    }
+
+    return {
+        valid: true,
+        row: [
+            ts,
+            log.level,
+            log.service,
+            log.message,
+            log.attributes ? JSON.stringify(log.attributes) : null,
+        ],
+    };
+}
+
 export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
     if (!Array.isArray(logs)) {
         return { accepted: 0, rejected: [{ index: -1, reason: "logs must be an array" }] };
@@ -22,77 +81,32 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
 
     const rejected: { index: number; reason: string }[] = [];
     const validRows: (string | null)[][] = [];
+    const now = Date.now();
 
     for (let index = 0; index < logs.length; index++) {
         const log = logs[index]!;
-
-        if (!log.timestamp) {
-            rejected.push({ index, reason: "timestamp is required" });
+        const result = validateLogEntry(log, now);
+        if (!result.valid) {
+            rejected.push({ index, reason: result.reason });
             continue;
         }
-
-        const ts = log.timestamp;
-        const time = new Date(ts);
-        if (isNaN(time.getTime())) {
-            rejected.push({ index, reason: "invalid timestamp" });
-            continue;
-        }
-
-        const fiveMinutesFromNow = Date.now() + 5 * 60 * 1000;
-        if (time.getTime() > fiveMinutesFromNow) {
-            rejected.push({ index, reason: "timestamp too far in the future" });
-            continue;
-        }
-
-        if (!VALID_LEVELS.includes(log.level)) {
-            rejected.push({ index, reason: `invalid level: '${log.level}'` });
-            continue;
-        }
-
-        if (typeof log.service !== "string" || log.service.trim() === "") {
-            rejected.push({ index, reason: "service is required" });
-            continue;
-        }
-
-        if (typeof log.message !== "string" || log.message.trim() === "") {
-            rejected.push({ index, reason: "message is required" });
-            continue;
-        }
-
-        if (log.attributes != null) {
-            let hasNested = false;
-            for (const [k, v] of Object.entries(log.attributes)) {
-                if (v != null && typeof v === "object") {
-                    rejected.push({ index, reason: `nested object in attribute '${k}'` });
-                    hasNested = true;
-                    break;
-                }
-            }
-            if (hasNested) continue;
-        }
-
-        validRows.push([
-            ts,
-            log.level,
-            log.service,
-            log.message,
-            log.attributes ? JSON.stringify(log.attributes) : null,
-        ]);
+        validRows.push(result.row);
     }
 
     if (validRows.length > 0) {
-        const placeholders: string[] = [];
-        const flatValues: any[] = [];
-        let idx = 1;
-        for (const row of validRows) {
-            placeholders.push(`($${idx}, $${idx + 1}, $${idx + 2}, $${idx + 3}, $${idx + 4})`);
-            flatValues.push(row[0], row[1], row[2], row[3], row[4]);
-            idx += 5;
-        }
+        // unnest() sends one array per column instead of N*5 bind parameters, so the query
+        // text stays a fixed size regardless of batch size — avoids Postgres re-parsing/
+        // re-planning an ever-growing VALUES list on every ingest call.
+        const timestamps = validRows.map((r) => r[0]);
+        const levels = validRows.map((r) => r[1]);
+        const services = validRows.map((r) => r[2]);
+        const messages = validRows.map((r) => r[3]);
+        const attributes = validRows.map((r) => r[4]);
 
         await pool.query(
-            `INSERT INTO logs (timestamp, level, service, message, attributes) VALUES ${placeholders.join(", ")}`,
-            flatValues
+            `INSERT INTO logs (timestamp, level, service, message, attributes)
+             SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::jsonb[])`,
+            [timestamps, levels, services, messages, attributes]
         );
     }
 
@@ -113,11 +127,14 @@ export async function queryLogs(query: any) {
 
     let limit = 100;
     if (query.limit) {
-        const parsedLimit = parseInt(query.limit, 10);
-        if (isNaN(parsedLimit)) {
+        const parsedLimit = Number(query.limit);
+        if (!Number.isInteger(parsedLimit)) {
             throw new Error("limit must be a number");
         }
-        limit = Math.min(parsedLimit, 1000);
+        if (parsedLimit < 1 || parsedLimit > 1000) {
+            throw new Error("limit must be between 1 and 1000");
+        }
+        limit = parsedLimit;
     }
 
     let offset = 0;
@@ -183,12 +200,20 @@ export async function queryLogs(query: any) {
         }
     }
 
-    // Capture filters for COUNT(*) before cursor pagination adds parameters
+    // Capture filters for the optional COUNT(*) before cursor pagination adds parameters
     const filterConditions = [...conditions];
     const filterValues = [...values];
 
     if (cursor) {
-        const decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+        let decoded: { timestamp: string; id: number };
+        try {
+            decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+            if (!decoded || typeof decoded.timestamp !== "string" || typeof decoded.id !== "number") {
+                throw new Error("shape");
+            }
+        } catch {
+            throw new Error("invalid cursor");
+        }
         conditions.push(`(timestamp, id) < ($${paramIndex}, $${paramIndex + 1})`);
         values.push(decoded.timestamp, decoded.id);
         paramIndex += 2;
@@ -201,13 +226,17 @@ export async function queryLogs(query: any) {
 
     const result = await pool.query(querySql, values);
 
-    // Compute total count of filtered logs
-    const countWhereClause = filterConditions.length > 0 ? `WHERE ${filterConditions.join(" AND ")}` : "";
-    const countResult = await pool.query(
-        `SELECT COUNT(*) FROM logs ${countWhereClause}`,
-        filterValues
-    );
-    const total = parseInt(countResult.rows[0].count, 10);
+    // Cursor pagination (the required API contract) never needs a total, and computing one
+    // would double the query cost on the hot path; only the dashboard's page-number UI needs it.
+    let total: number | null = null;
+    if (!cursor) {
+        const countWhereClause = filterConditions.length > 0 ? `WHERE ${filterConditions.join(" AND ")}` : "";
+        const countResult = await pool.query(
+            `SELECT COUNT(*) FROM logs ${countWhereClause}`,
+            filterValues
+        );
+        total = parseInt(countResult.rows[0].count, 10);
+    }
 
     let nextCursor = null;
     if (result.rows.length === limit) {

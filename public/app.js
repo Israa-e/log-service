@@ -863,10 +863,14 @@ Content-Type: application/json
     chatMessages.appendChild(typing);
     chatMessages.scrollTop = chatMessages.scrollHeight;
 
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
     fetch('/support/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: val }),
+      signal: controller.signal,
     })
       .then(async r => {
         if (!r.ok) throw new Error('support agent unavailable');
@@ -879,7 +883,8 @@ Content-Type: application/json
       .catch(() => {
         typing.remove();
         appendChatBubble("Support agent is currently unavailable. Please try again later.", false);
-      });
+      })
+      .finally(() => clearTimeout(timeout));
   }
 
   document.getElementById('send-chat-btn').addEventListener('click', handleSupportSend);

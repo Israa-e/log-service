@@ -1,32 +1,29 @@
 import { pool } from "../db/index.js";
 import { createNotification } from "./notificationService.js";
 const RETENTION_DAYS = parseInt(process.env.RETENTION_DAYS || "30", 10);
-const BATCH_SIZE = 1000;
-export async function runRetention() {
-    const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
-    let totalDeleted = 0;
-    while(true){
-        const result = await pool.query(
-      `DELETE FROM logs
-       WHERE (id, timestamp) IN (
-         SELECT id, timestamp FROM logs
-         WHERE timestamp < $1
-         LIMIT $2
-       )`,
-      [cutoff.toISOString(), BATCH_SIZE]
-    );   const deletedCount = result.rowCount || 0;
-    totalDeleted += deletedCount;
 
-    if (deletedCount < BATCH_SIZE) break; // خلصنا، ما ضل شي أقدم من الحد
-  }
+export async function runRetention() {
+  const cutoff = new Date(Date.now() - RETENTION_DAYS * 24 * 60 * 60 * 1000);
+
+  // drop_chunks only removes chunks fully older than `cutoff`, so a chunk straddling the
+  // boundary survives. Count rows first for reporting purposes — the count can therefore be a
+  // slight overestimate of what actually gets dropped, bounded by one chunk_time_interval.
+  const countResult = await pool.query(
+    `SELECT COUNT(*) FROM logs WHERE timestamp < $1`,
+    [cutoff.toISOString()]
+  );
+  const totalDeleted = parseInt(countResult.rows[0].count, 10);
+
+  await pool.query(`SELECT drop_chunks('logs', older_than => $1::timestamptz)`, [
+    cutoff.toISOString(),
+  ]);
 
   if (totalDeleted > 0) {
     createNotification("retention", "Retention Run Complete", `Deleted ${totalDeleted} logs older than ${RETENTION_DAYS} days`);
-    console.log(`Retention: deleted ${totalDeleted} old logs`);
+    console.log(`Retention: dropped chunks containing ~${totalDeleted} old logs`);
   }
 
   return totalDeleted;
-    
 }
 
 export function startRetentionJob(intervalMs: number = 60 * 60 * 1000) {
