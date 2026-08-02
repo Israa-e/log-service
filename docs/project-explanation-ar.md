@@ -190,13 +190,18 @@ Body: { "service": "checkout", "threshold": 10, "window_minutes": 5, "webhook_ur
 | `queryLogs()` | يبني SQL ديناميكي حسب الفلاتر + cursor pagination |
 | `queryAggregate()` | time_bucket للتجميع الإحصائي |
 
+> ملاحظة: `insertLogs()` صار يستخدم `unnest()` — إدراج بمصفوفات (عمود واحد لكل مصفوفة) بدل بناء قائمة placeholders تكبر مع حجم الدفعة. حسّن سرعة الإدخال بشكل كبير (تم قياس ~15,000-17,700 سجل/ثانية).
+
 ### alertService.ts
 - `checkAlerts()`: يجري كل 60 ثانية
 - لكل قاعدة: يحسب عدد errors في الفترة الزمنية
 - إذا تجاوز threshold: يرسل Webhook + ينشئ notification + يسجل الوقت (منع تكرار آخر 10 دقايق)
 
 ### retentionService.ts
-- `runRetention()`: batch delete للـ logs القديمة
+- `runRetention()`: بدل batch delete, صار يستخدم `SELECT drop_chunks('logs', older_than => cutoff)`
+- استدعاء واحد يحذف "chunks" كاملة من الـ hypertable (عملية metadata سريعة) بدل حذف الصفوف على دفعات
+- الفايدة: ما في حمل على WAL/vacuum يتناسب مع عدد الصفوف
+- الكلفة: دقة الحذف صارت بحدود مدة chunk واحد (7 أيام افتراضياً) بدل دقة يومية
 - ينشئ notification بعد ما يخلص
 
 ### notificationService.ts
@@ -251,11 +256,16 @@ Dashboard بسيط مع مستخدم واحد. Session أسهل وأكثر أم�
 ## 9. CI/CD Pipeline
 
 كل push على main:
-1. `docker compose up --build -d` — شغّل السيرفر + DB
-2. انتظر `/health`
-3. اختبر `POST /logs` (إدخال)
-4. اختبر `GET /logs` (بحث)
-5. اختبر `GET /logs/aggregate` (إحصائيات)
+1. `npm ci` — تثبيت الـ dependencies
+2. `npm run build` — typecheck عبر `tsc --noEmit`
+3. `npm test` — اختبارات وحدة عبر `tsx --test`
+4. `docker compose up --build -d` — شغّل السيرفر + DB
+5. انتظر `/health`
+6. اختبر `POST /logs` (إدخال)
+7. اختبر `GET /logs` (بحث)
+8. اختبر `GET /logs/aggregate` (إحصائيات)
+
+الفايدة: لو في خطأ نوع (type error) أو اختبار فاشل، الـ CI يفشل بسرعة قبل ما يشغل Docker أصلاً.
 
 ---
 
@@ -284,6 +294,20 @@ docker-compose.yml
 ├── app: port 8080, يعتمد على db
 └── db: timescale/timescaledb:latest-pg16, port 5433, volume pgdata
 ```
+
+### حدود الموارد (Resource Limits)
+| الخدمة | الحد |
+|---|---|
+| `app` | `cpus: 0.5`, `mem_limit: 256m` |
+| `db` | `cpus: 1`, `mem_limit: 1g` |
+
+بالإضافة, قاعدة البيانات مضبوطة بإعدادات Postgres لتحسين الأداء تحت الحمل الكبير:
+- `synchronous_commit=off`
+- `shared_buffers=256MB`
+- `max_wal_size=2GB`
+- `checkpoint_completion_target=0.9`
+
+هذا مقايضة: موثوقية كتابة أقل شوي (لو صار crash قبل الـ flush) مقابل زمن استجابة أقل.
 
 ### Environment Variables
 | المتغير | الافتراضي | الاستخدام |

@@ -164,6 +164,17 @@ app.use("/support", supportRouter);
 - **المسارات (Routers)**: ربط كل مسار بالـ Router الخاص به.
 
 ```typescript
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.type === "entity.parse.failed" || err instanceof SyntaxError) {
+    return res.status(400).json({ error: "malformed JSON" });
+  }
+  next(err);
+});
+```
+
+- **معالج أخطاء JSON**: ميدل وير من نوع error-handling (4 معاملات، وهو ما يجعل Express يتعرف عليه كمعالج أخطاء وليس middleware عادي). يُسجَّل بعد كل الـ routes، ويلتقط الخطأ الذي يرميه `express.json()` عندما يكون جسم الطلب JSON غير صحيح (malformed)، فيرجع استجابة نظيفة `400 { error: "malformed JSON" }` بدلاً من ترك Express يرجع صفحة خطأ افتراضية غير واضحة. أي خطأ آخر غير متعلق بتحليل JSON يُمرَّر عبر `next(err)`.
+
+```typescript
 startRetentionJob();
 startAlertJob();
 ```
@@ -394,9 +405,9 @@ router.post("/chat", async (req, res) => {
 
 ### src/services/logsService.ts
 
-#### insertLogs - إدراج السجلات مع التحقق
+#### validateLogEntry - التحقق من صحة سجل واحد
 
-التحقق من كل سجل:
+فُصل التحقق من كل سجل إلى دالة مستقلة مُصدَّرة (`export function validateLogEntry`) بدلاً من أن يكون مدمجاً داخل `insertLogs`، لتصبح قابلة للاختبار بشكل منفصل (يوجد الآن ملف اختبار `src/services/logsService.test.ts`). تتحقق من:
 
 1. **timestamp**: مطلوب ويجب أن يكون تاريخاً صحيحاً.
 2. **الطابع الزمني في المستقبل**: يسمح بفارق 5 دقائق فقط للمستقبل (لمراعاة اختلاف التوقيت الطفيف).
@@ -405,15 +416,21 @@ router.post("/chat", async (req, res) => {
 5. **message**: نص غير فارغ.
 6. **attributes**: إذا وجد، يتحقق من عدم وجود كائنات متداخلة (nested objects).
 
-بناء الاستعلام الديناميكي:
-- يستخدم `placeholders` متغيرة (`$1, $2, ...`) حسب عدد السجلات الصحيحة.
-- كل سجل صحيح يضاف كـ `($idx, $idx+1, $idx+2, $idx+3, $idx+4)`.
-- القيم تُسطح في مصفوفة `flatValues`.
+تعيد إما `{ valid: true, row: [...] }` (الصف جاهز للإدراج) أو `{ valid: false, reason }`.
 
-**مثال**: إرسال 3 سجلات صحيحة ينتج:
+#### insertLogs - إدراج السجلات بالجملة (bulk insert)
+
+يستدعي `validateLogEntry` لكل سجل، ويجمع الصفوف الصحيحة في `validRows` والمرفوضة في `rejected`.
+
+**الإدراج عبر unnest بدلاً من VALUES الديناميكي**: سابقاً كان الاستعلام يبني قائمة `placeholders` متغيرة الحجم (`VALUES ($1,$2,...), ($6,$7,...), ...`) تكبر مع حجم الدفعة. الآن يُبنى الاستعلام مرة واحدة بحجم ثابت:
+
 ```sql
-INSERT INTO logs (timestamp, level, service, message, attributes) VALUES ($1,$2,$3,$4,$5), ($6,$7,$8,$9,$10), ($11,$12,$13,$14,$15)
+INSERT INTO logs (timestamp, level, service, message, attributes)
+SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::jsonb[])
 ```
+
+- يُرسل مصفوفة واحدة لكل عمود (`timestamps[]`, `levels[]`, ...) بدلاً من N×5 معامل منفصل.
+- بما أن نص الاستعلام ثابت الحجم بغض النظر عن عدد السجلات في الدفعة، لا يحتاج Postgres لإعادة تحليل/تخطيط استعلام متزايد الحجم في كل طلب. هذا كان أكبر تحسين على سرعة الإدخال (تم قياس ~15,000-17,700 سجل/ثانية).
 
 **الإرجاع**: `{ accepted: N, rejected: [{ index, reason }] }`.
 
@@ -423,7 +440,7 @@ INSERT INTO logs (timestamp, level, service, message, attributes) VALUES ($1,$2,
 
 1. **تحقق من validity**:
    - `level`: إذا كان موجوداً، يتحقق من كل مستوى في الفاصلة المنفصلة.
-   - `limit`: يحول لرقم، أقصى حد 1000.
+   - `limit`: يُحوَّل لرقم، ويُرفض صراحة (برمي خطأ) إذا لم يكن عدداً صحيحاً أو كان خارج النطاق [1, 1000]، بدلاً من الاقتصاص الصامت.
    - `page`: يحول لرقم موجب (1-indexed)، يحسب `offset`.
 
 2. **بناء الشروط (conditions)** ديناميكياً:
@@ -435,10 +452,13 @@ INSERT INTO logs (timestamp, level, service, message, attributes) VALUES ($1,$2,
 
 3. **Cursor-based pagination**:
    - يدعم التصفح المتقدم عبر `cursor` (base64 مشفر لـ `{ timestamp, id }`).
+   - فك التشفير محمي الآن بـ `try/catch` مع التحقق من شكل الكائن الناتج (`timestamp` نص و`id` رقم)؛ أي فشل أو شكل غير متوقع يرمي خطأ `"invalid cursor"` بدل أن يكسر الاستعلام.
    - إذا وُجد cursor، يستخدم `WHERE (timestamp, id) < ($N, $N+1)` بدلاً من `OFFSET`.
 
-4. **الإرجاع**: `{ logs, total, next_cursor }`.
-   - `total`: عدد السجلات المطابقة للفلتر (بدون cursor).
+4. **استعلام COUNT(*) الاختياري**: يُنفَّذ فقط عندما لا يوجد `cursor` (أي فقط لواجهة الصفحات المرقمة في الداشبورد)، بدل تشغيله دائماً كما كان سابقاً. هذا يقلل تكلفة القراءة بمقدار النصف على المسار الأساسي (cursor pagination)، حيث `total` لا حاجة له هناك أصلاً.
+
+5. **الإرجاع**: `{ logs, total, next_cursor }`.
+   - `total`: `null` عند استخدام cursor، وإلا عدد السجلات المطابقة للفلتر.
    - `next_cursor`: إذا كان هناك صفحة تالية.
 
 #### queryAggregate - الاستعلام التجميعي
@@ -471,18 +491,11 @@ ORDER BY bucket_start ASC
 ### src/services/retentionService.ts - خدمة الاحتفاظ
 
 **runRetention**:
-- يحسب تاريخ القطع: `الآن - RETENTION_DAYS`.
-- يحذف في دفعات (batch) كل منها 1000 سجل:
-  ```sql
-  DELETE FROM logs
-  WHERE (id, timestamp) IN (
-    SELECT id, timestamp FROM logs
-    WHERE timestamp < $1
-    LIMIT $2
-  )
-  ```
-- يستمر في الحذف حتى يصبح عدد المحذوفات أقل من 1000.
-- ينشئ إشعاراً بعدد السجلات المحذوفة.
+- يحسب تاريخ القطع: `cutoff = الآن - RETENTION_DAYS`.
+- يحسب أولاً `SELECT COUNT(*) FROM logs WHERE timestamp < $1` لأغراض التقرير/الإشعار فقط.
+- ثم يحذف بنداء واحد لـ `SELECT drop_chunks('logs', older_than => cutoff)` بدلاً من الحذف صفاً صفاً على دفعات (batch DELETE بحلقة تكرار) كما كان سابقاً. هذه عملية على مستوى TimescaleDB hypertable تحذف "chunks" كاملة كعملية meta-data، مما يلغي الحمل على WAL/vacuum الناتج عن حذف ملايين الصفوف الفردية.
+- **أثر جانبي مهم**: القطعة (chunk) لا تُحذف إلا إذا كانت **كاملة** أقدم من `cutoff`، فدقة الاحتفاظ الفعلية أصبحت بحدود مدة `chunk_time_interval` واحدة (7 أيام افتراضياً) بدل أن تكون دقيقة لليوم. لذلك قد يكون العدد المُبلَّغ عنه (من COUNT) أكبر قليلاً مما حُذف فعلياً.
+- ينشئ إشعاراً بعدد السجلات المحذوفة إذا كان أكبر من صفر.
 
 **startRetentionJob**:
 - يشغل `runRetention` فوراً عند بدء التشغيل.
@@ -517,13 +530,19 @@ ORDER BY bucket_start ASC
 
 ### src/services/supportService.ts - خدمة الدعم عبر الذكاء الاصطناعي
 
+**getDbContext()**:
+- دالة جديدة تجلب إحصائيات حقيقية من قاعدة البيانات: إجمالي عدد السجلات، عدد الخدمات والمستويات المختلفة، أقدم وأحدث توقيت، وتوزيع آخر 24 ساعة حسب المستوى وحسب الخدمة (أعلى 8 خدمات).
+- تعيد كل هذا كـ JSON نصي، أو النص `"Database context unavailable"` إذا فشل الاستعلام (محمية بـ try/catch).
+
 **getSupportReply(message)**:
 - يستخدم OpenRouter API (واجهة موحدة لمختلف نماذج الذكاء الاصطناعي).
-- `SYSTEM_PROMPT`: يعرّف المساعد الذكي بأنه متخصص في Obsidian Log Engine.
+- `SYSTEM_PROMPT`: يعرّف المساعد الذكي بأنه متخصص في Obsidian Log Engine، ويوضح أنه يجب استخدام سياق قاعدة البيانات المرفق للإجابة عن أسئلة تخص البيانات الفعلية.
+- يستدعي `getDbContext()` ويضمّن نتيجتها مع رسالة المستخدم في محتوى رسالة الـ `user` المرسلة للنموذج، حتى يقدر الشات يجاوب على أسئلة عن البيانات الفعلية الحالية بدل إجابات عامة فقط.
 - النموذج المستخدم: `gpt-4o-mini` (اقتصادي وسريع).
 - `max_tokens: 300`: يحد طول الرد.
 - يرسل `HTTP-Referer` و `X-Title` للتعريف بالتطبيق.
-- في حال فشل الطلب، يرمي خطأ مع كود الحالة.
+- **مهلة زمنية (timeout)**: يستخدم `AbortController` مع `setTimeout` مدته 15 ثانية حول طلب `fetch`، بحيث إذا لم يستجب OpenRouter لا يبقى الطلب معلقاً إلى الأبد؛ عند انتهاء المهلة يُرمى خطأ `"OpenRouter request timed out"`.
+- في حال فشل الطلب (استجابة غير ناجحة)، يرمي خطأ مع كود الحالة ونص الاستجابة.
 
 ---
 

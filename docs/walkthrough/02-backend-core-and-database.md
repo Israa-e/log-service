@@ -141,11 +141,21 @@ app.use("/support", supportRouter);
 Lines 42-47. Mounts each feature router under its own path prefix — this is the actual JSON/API surface of the service (as opposed to the HTML page routes above). Worth noting: `/support` is used both as a static HTML page route (line 40, exact match on `GET /support`) *and* as a router mount point (line 47, matching `/support/*` and, depending on Express's route-matching, potentially colliding with `GET /support` again if `supportRouter` also defines a `/` route — since line 40 is registered first, it wins for the exact path).
 
 ```ts
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  if (err.type === "entity.parse.failed" || err instanceof SyntaxError) {
+    return res.status(400).json({ error: "malformed JSON" });
+  }
+  next(err);
+});
+```
+Lines 49-54. A standard Express 4-argument error-handling middleware — Express recognizes the arity of the callback and only invokes handlers with exactly four parameters (`err, req, res, next`) when something upstream calls `next(err)` or throws synchronously. It's registered after all the route mounts, so it sits downstream of everything above it, including `express.json()` on line 17. `express.json()` throws (via `next(err)`) when the request body is present but isn't valid JSON; without this handler, that error would fall through to Express's default error handler, which produces a generic, unstyled 500-ish response. Here, the two conditions checked — `err.type === "entity.parse.failed"` (the specific error type `body-parser`, which underlies `express.json()`, attaches to malformed-body errors) and `err instanceof SyntaxError` (a broader check for the same class of parsing failure) — catch that case and reply with a clean `400 { error: "malformed JSON" }` instead. Any other kind of error (i.e., not a JSON parse failure) is passed on via `next(err)` rather than swallowed, so unrelated errors still reach Express's default handler (or any other error middleware registered after this one, of which there currently are none).
+
+```ts
 startRetentionJob();
 startAlertJob();
 export default app;
 ```
-Lines 49-51. Starts the two background jobs (log retention cleanup and alert-rule evaluation, defined in their respective service modules) and exports the configured `app` object as the module's default export, to be consumed by `src/index.ts`. As noted above, because these two calls run during module evaluation (i.e., as soon as something `import`s `app.ts`), they fire before `src/index.ts`'s `waitForDb()`/`migrate()` sequence completes — the jobs' first tick could in principle race against an unready or unmigrated database.
+Lines 56-58. Starts the two background jobs (log retention cleanup and alert-rule evaluation, defined in their respective service modules) and exports the configured `app` object as the module's default export, to be consumed by `src/index.ts`. As noted above, because these two calls run during module evaluation (i.e., as soon as something `import`s `app.ts`), they fire before `src/index.ts`'s `waitForDb()`/`migrate()` sequence completes — the jobs' first tick could in principle race against an unready or unmigrated database.
 
 ## src/db/index.ts
 

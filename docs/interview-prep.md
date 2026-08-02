@@ -74,7 +74,7 @@ WHERE (timestamp, id) < (?, ?) — يقرأ بس اللي يحتاج.
   - message: non-empty string
   - attributes: flat object فقط
 
-اللي ينجح → ينضاف validRows → batch INSERT (parameterized)
+اللي ينجح → ينضاف validRows → batch INSERT (parameterized) عن طريق unnest()
 اللي يفشل → rejected array مع index والسبب
 
 في الآخر: HTTP 200 إذا في accepted > 0, 400 إذا الكل مرفوض.
@@ -114,15 +114,21 @@ group_by: service أو level (اختياري)
 افتحي `src/services/retentionService.ts` وقولي:
 
 ```
-Batch delete: 1000 صف كل مرة
-DELETE FROM logs WHERE (id, timestamp) IN (
-  SELECT id, timestamp FROM logs WHERE timestamp < $1 LIMIT 1000
-)
+مو batch delete — استدعاء واحد بس:
+SELECT drop_chunks('logs', older_than => $1::timestamptz)
 
-لما عدد الصفوف المحذوفة أقل من 1000 → نوقف.
-هذا يضمن ما يسوي lock كبير على الجدول.
+logs جدول hypertable في TimescaleDB، مقسم داخلياً لـ "chunks" حسب فترة زمنية
+(افتراضياً 7 أيام). drop_chunks() تحذف الـ chunk كامل كعملية metadata (زي
+DROP TABLE) بدل ما تحذف صف صف — فما فيه تقريباً أي تعارض (lock contention)
+مع الـ INSERTs الشغالة بنفس الوقت.
 
-بعد الحذف، ينشئ notification:
+الأثر الجانبي: الحذف يصير فقط للـ chunk الكامل الأقدم من الـ cutoff، يعني
+دقة الاحتفاظ (retention) صارت ~مدة chunk واحد (7 أيام افتراضياً) مو دقة اليوم
+بالضبط — لو الـ cutoff نص chunk، الصفوف اللي جوا نفس الـ chunk بعد الـ cutoff
+تضل موجودة لحد ما الـ chunk كامل يصير أقدم من الـ cutoff.
+
+قبل drop_chunks نعمل COUNT(*) تقريبي بس للتقرير/الـ notification، مو جزء من
+منطق الحذف نفسه:
 createNotification("retention", "Retention Run Complete", ...)
 ```
 
@@ -151,8 +157,19 @@ createNotification("retention", "Retention Run Complete", ...)
 كل الاستعلامات تستخدم parameterized queries ($1, $2, ...).
 ما في concatenation للـ user input أبداً.
 
-مثلاً: INSERT INTO logs VALUES ($1, $2, $3, $4, $5)
-القيم تمر كـ array: [ts, level, service, message, attributesJSON]
+بس الآلية تطورت: بدل ما نبني VALUES ($1,$2,...), ($6,$7,...), ... لكل صف
+(نص استعلام يكبر مع حجم الـ batch)، نستخدم unnest():
+
+INSERT INTO logs (timestamp, level, service, message, attributes)
+SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::jsonb[])
+
+هنا كل parameter مصفوفة وحدة تمثل عمود كامل (مو صف)، فمهما كان حجم الـ batch
+(200 أو 500 log) الاستعلام نفسه ثابت الحجم — 5 parameters بس. هذا يمنع
+Postgres من إعادة parse/plan لاستعلام متغير الحجم كل مرة، وهو أحد أسباب
+تحسن الأداء لـ ~15,000-17,700 log/sec.
+
+الحماية من SQL injection نفسها ما تغيرت: القيم دايماً تروح كـ bound
+parameters، سواء array عادي أو array-per-column مع unnest.
 ```
 
 ---
@@ -172,8 +189,13 @@ createNotification("retention", "Retention Run Complete", ...)
 > استخدمي `load-test.js`:
 > ```
 > autocannon sends 20 concurrent connections for 10s
-> Target: 500 logs/sec
+> كل request فيه batch من 200-500 logs
+> Measured: ~15,000-17,700 logs/sec
 > ```
+> **مهم:** هذا رقم logs/sec (سجل بالثانية) مو requests/sec — لأن كل request
+> واحد يحمل batch كامل (200-500 سجل)، فلو حسبناه requests/sec الرقم راح
+> يكون أوطى بكثير. الفرق هذا مهم توضحيه في المقابلة عشان ما يفهم إنك تقصدين
+> عدد الـ HTTP requests.
 
 ---
 
@@ -201,11 +223,11 @@ createNotification("retention", "Retention Run Complete", ...)
 > 
 > "استخدمت **Node.js/Express + TypeScript** للـ backend، **TimescaleDB** قاعدة بيانات (PostgreSQL مع إضافة hypertable تقسم البيانات حسب الوقت)، و **Docker** للتشغيل. الداشبورد مبني بـ **Tailwind CSS** مع CSS variables للـ dark/light theme."
 > 
-> "الـ ingestion يستقبل batch logs، يتحقق من صحة كل وحدة على حدة (partial acceptance)، ويدخلهم بـ batch INSERT parameterized عشان الأمان والأداء."
+> "الـ ingestion يستقبل batch logs، يتحقق من صحة كل وحدة على حدة (partial acceptance)، ويدخلهم بـ batch INSERT parameterized عن طريق unnest() (مصفوفة وحدة لكل عمود) عشان الأمان والأداء — قست ~15,000-17,700 log/sec."
 > 
 > "الـ query يدعم فلاتر service/level/time/message/attributes، مع cursor pagination للتصفح بدون OFFSET، و time_bucket aggregation للتحليلات."
 > 
-> "الـ retention job تشتغل كل ساعة وتحذف logs أقدم من 30 يوم في batches (1000 صف) عشان ما تثقل السيرفر."
+> "الـ retention job تشتغل كل ساعة وتحذف logs أقدم من 30 يوم عن طريق drop_chunks() — تحذف الـ TimescaleDB chunks الكاملة الأقدم من الـ cutoff كعملية metadata سريعة، بدل حذف صفوف على دفعات، فما تعمل تعارض مع الـ ingestion."
 > 
 > "فيه alert system يراقب عدد الأخطاء ويرسل webhooks وينشئ notifications، و notifications system بيعرضها لمستخدم الداشبورد."
 > 

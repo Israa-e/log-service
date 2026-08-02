@@ -616,7 +616,7 @@ Standard accordion toggle behavior, set up once for each header at drawer-constr
 - Lines 828–835: toggles the `.hidden` class on the content and flips the chevron glyph between `expand_more` (collapsed) and `expand_less` (expanded) to match.
 - Line 838: immediately after attaching the click listener, each section's content is force-collapsed (`.hidden` added) so the accordion starts fully closed on drawer creation, regardless of the `display: block` set inline in the markup — this line runs once at IIFE-execution time, not on every drawer open.
 
-#### Support chat behavior (lines 841–888)
+#### Support chat behavior (lines 841–893)
 
 ```js
 842   const chatMessages = document.getElementById('support-chat-messages');
@@ -654,36 +654,43 @@ Standard accordion toggle behavior, set up once for each header at drawer-constr
 - Lines 859–864: appends a temporary "Support Agent is typing..." bot bubble (italic, dimmed via `opacity-50`) tagged with id `chat-typing-status`, giving immediate feedback while the network request is in flight, and scrolls it into view.
 
 ```js
-866     fetch('/support/chat', {
-867       method: 'POST',
-868       headers: { 'Content-Type': 'application/json' },
-869       body: JSON.stringify({ message: val }),
-870     })
-871       .then(async r => {
-872         if (!r.ok) throw new Error('support agent unavailable');
-873         return r.json();
-874       })
-875       .then(data => {
-876         typing.remove();
-877         appendChatBubble(data.reply || "Sorry, I couldn't process that.", false);
+866   const controller = new AbortController();
+867   const timeout = setTimeout(() => controller.abort(), 20000);
+868
+869     fetch('/support/chat', {
+870       method: 'POST',
+871       headers: { 'Content-Type': 'application/json' },
+872       body: JSON.stringify({ message: val }),
+873       signal: controller.signal,
+874     })
+875       .then(async r => {
+876         if (!r.ok) throw new Error('support agent unavailable');
+877         return r.json();
 878       })
-879       .catch(() => {
+879       .then(data => {
 880         typing.remove();
-881         appendChatBubble("Support agent is currently unavailable. Please try again later.", false);
-882       });
-883   }
+881         appendChatBubble(data.reply || "Sorry, I couldn't process that.", false);
+882       })
+883       .catch(() => {
+884         typing.remove();
+885         appendChatBubble("Support agent is currently unavailable. Please try again later.", false);
+886       })
+887       .finally(() => clearTimeout(timeout));
+888   }
 ```
 
-- Lines 866–870: POSTs `{ message: val }` to `/support/chat` (this is a promise-chain style, `.then`/`.catch`, unlike the `async/await` style used in the Add Log submit handler and `fetchJSON` — the file mixes both idioms).
-- Lines 871–873: a non-2xx response is explicitly turned into a thrown error (since `fetch` doesn't reject on HTTP error statuses by default), routing it to the `.catch` below.
-- Lines 875–877: on success, removes the typing indicator and appends the bot's real reply (`data.reply`), falling back to a generic "couldn't process that" message if the server didn't include a `reply` field.
-- Lines 879–882: on any failure (network error or the thrown "unavailable" error), removes the typing indicator and shows a generic unavailable message instead — the user never sees the typing bubble stuck indefinitely.
+- Lines 866–867: creates an `AbortController` and arms a 20-second `setTimeout` that calls `controller.abort()` if the request is still pending when it fires — a client-side safety net so the "typing..." indicator can't spin forever if `/support/chat` hangs (e.g. past the backend's own upstream timeout) or the network stalls.
+- Lines 869–874: POSTs `{ message: val }` to `/support/chat`, now also passing `signal: controller.signal` so the fetch can be cancelled by the timeout above (this is a promise-chain style, `.then`/`.catch`, unlike the `async/await` style used in the Add Log submit handler and `fetchJSON` — the file mixes both idioms).
+- Lines 875–878: a non-2xx response is explicitly turned into a thrown error (since `fetch` doesn't reject on HTTP error statuses by default), routing it to the `.catch` below.
+- Lines 879–882: on success, removes the typing indicator and appends the bot's real reply (`data.reply`), falling back to a generic "couldn't process that" message if the server didn't include a `reply` field.
+- Lines 883–886: on any failure — a network error, the thrown "unavailable" error, or the `AbortError` produced when the timeout fires — removes the typing indicator and shows the same generic unavailable message; the user never sees the typing bubble stuck indefinitely, even on a hung request.
+- Line 887: a `.finally()` always runs `clearTimeout(timeout)`, so once the request settles (success, failure, or abort) there's no stray timer left armed to fire later.
 
 ```js
-885   document.getElementById('send-chat-btn').addEventListener('click', handleSupportSend);
-886   chatInput.addEventListener('keydown', function (e) {
-887     if (e.key === 'Enter') handleSupportSend();
-888   });
+890   document.getElementById('send-chat-btn').addEventListener('click', handleSupportSend);
+891   chatInput.addEventListener('keydown', function (e) {
+892     if (e.key === 'Enter') handleSupportSend();
+893   });
 ```
 
 Wires the Send button's click and the input's Enter keypress to the same `handleSupportSend` handler, so the chat can be driven either by mouse or keyboard.
