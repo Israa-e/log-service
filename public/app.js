@@ -86,6 +86,18 @@ function renderLogRow(log) {
   </div>`;
 }
 
+/* === Signed-in User Identity === */
+async function loadUserIdentity() {
+  const data = await fetchJSON('/auth/session');
+  const avatarEl = document.getElementById('user-identity-avatar');
+  const nameEl = document.getElementById('user-identity-name');
+  const subEl = document.getElementById('user-identity-sub');
+  if (!data?.authenticated) return;
+  if (avatarEl) avatarEl.textContent = data.username.charAt(0).toUpperCase();
+  if (nameEl) nameEl.textContent = data.username;
+  if (subEl) subEl.textContent = `user #${data.id}`;
+}
+
 /* === Logout === */
 async function logout() {
   try {
@@ -170,6 +182,9 @@ async function markAllNotifRead() {
 (function () {
   // Initialize theme on load
   if (typeof initTheme === 'function') initTheme();
+
+  // Populate the signed-in user's identity in the sidebar
+  loadUserIdentity();
 
   // Inject Shared CSS styles
   const css = `

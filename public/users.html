@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html class="dark" lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Obsidian Log — Users</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script src="tailwind-config.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+<link rel="stylesheet" href="styles.css"/>
+</head>
+<body class="flex min-h-screen">
+<!-- SideNavBar -->
+<aside class="w-[240px] h-screen fixed left-0 top-0 border-r border-outline-variant bg-surface flex flex-col py-panel-padding z-50">
+  <div class="px-panel-padding mb-8">
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 bg-primary rounded flex items-center justify-center text-on-primary"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">layers</span></div>
+      <div><h1 class="font-headline-md text-headline-md font-bold tracking-tighter text-primary leading-tight">Obsidian Log</h1><p class="font-code-sm text-code-sm text-on-surface-variant opacity-60">v2.4.0-stable</p></div>
+    </div>
+  </div>
+  <nav class="flex-1 space-y-1 px-3">
+    <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">terminal</span><span>Logs</span></a>
+    <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">analytics</span><span>Metrics</span></a>
+    <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">history</span><span>Retention</span></a>
+    <a href="/users" class="flex items-center gap-3 px-3 py-2 rounded text-secondary font-bold bg-surface-container-highest transition-colors font-body-md text-body-md"><span class="material-symbols-outlined" style="font-variation-settings:'FILL'1">group</span><span>Users</span></a>
+  </nav>
+  <div class="mt-auto px-3 border-t border-outline-variant pt-4 space-y-1">
+    <a href="/docs" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">menu_book</span><span>Docs</span></a>
+    <a href="/support" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors font-body-md text-body-md"><span class="material-symbols-outlined">support_agent</span><span>Support</span></a>
+  </div>
+</aside>
+<!-- Main Content -->
+<main class="ml-[240px] flex-1 flex flex-col h-screen">
+  <!-- TopAppBar -->
+  <header class="h-16 flex justify-between items-center px-panel-padding bg-surface border-b border-outline-variant sticky top-0 z-40 flex-shrink-0">
+    <div class="flex items-center gap-3">
+      <span class="text-secondary font-bold font-code-sm">Users</span>
+    </div>
+    <div class="flex items-center gap-4">
+      <div class="flex items-center gap-2 border-l border-outline-variant pl-4">
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="logout()"><span class="material-symbols-outlined">logout</span></button>
+        <button class="p-1.5 text-on-surface-variant hover:text-secondary transition-all" onclick="toggleTheme()"><span class="material-symbols-outlined" id="theme-icon">light_mode</span></button>
+      </div>
+    </div>
+  </header>
+  <!-- Content -->
+  <div class="p-margin-safe space-y-6 overflow-auto flex-1">
+    <section class="max-w-md p-panel-padding bg-surface-container border border-outline-variant rounded space-y-4">
+      <h2 class="font-headline-md text-headline-md text-primary">Create User</h2>
+      <div>
+        <label class="text-label-caps text-on-surface-variant block mb-1">Username</label>
+        <input id="new-username" type="text" autocomplete="off" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="jane">
+      </div>
+      <div>
+        <label class="text-label-caps text-on-surface-variant block mb-1">Password</label>
+        <input id="new-password" type="password" autocomplete="new-password" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="At least 8 characters">
+      </div>
+      <p id="create-error" class="text-error text-code-sm hidden"></p>
+      <button id="create-user-btn" class="w-full py-2.5 bg-primary text-on-primary font-bold rounded hover:opacity-90 active:scale-[0.98] transition-all text-body-md">Create User</button>
+    </section>
+
+    <section class="p-panel-padding bg-surface-container border border-outline-variant rounded">
+      <h2 class="font-headline-md text-headline-md text-primary mb-4">Existing Users</h2>
+      <table class="w-full text-left">
+        <thead>
+          <tr class="text-label-caps text-on-surface-variant border-b border-outline-variant">
+            <th class="py-2">ID</th>
+            <th class="py-2">Username</th>
+            <th class="py-2">Created</th>
+          </tr>
+        </thead>
+        <tbody id="users-table-body">
+          <tr><td colspan="3" class="py-4 text-on-surface-variant text-body-md">Loading...</td></tr>
+        </tbody>
+      </table>
+    </section>
+  </div>
+</main>
+<script src="app.js"></script>
+<script>
+async function loadUsers() {
+  const body = document.getElementById('users-table-body');
+  const data = await fetchJSON('/auth/users');
+  const users = data?.users || [];
+  if (!users.length) {
+    body.innerHTML = '<tr><td colspan="3" class="py-4 text-on-surface-variant text-body-md">No users found.</td></tr>';
+    return;
+  }
+  body.innerHTML = users.map(u => `
+    <tr class="border-b border-outline-variant/40">
+      <td class="py-2 font-code-sm text-code-sm text-on-surface-variant">${u.id}</td>
+      <td class="py-2 text-body-md text-primary">${u.username}</td>
+      <td class="py-2 font-code-sm text-code-sm text-on-surface-variant">${formatTime(u.created_at)}</td>
+    </tr>
+  `).join('');
+}
+
+document.getElementById('create-user-btn').addEventListener('click', async () => {
+  const username = document.getElementById('new-username').value.trim();
+  const password = document.getElementById('new-password').value;
+  const errorEl = document.getElementById('create-error');
+  errorEl.classList.add('hidden');
+
+  const btn = document.getElementById('create-user-btn');
+  btn.disabled = true;
+  try {
+    const res = await fetch('/auth/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      errorEl.textContent = data.error || 'Could not create user.';
+      errorEl.classList.remove('hidden');
+      return;
+    }
+    document.getElementById('new-username').value = '';
+    document.getElementById('new-password').value = '';
+    window.showToast?.(`User "${data.user.username}" created`, 'success');
+    loadUsers();
+  } catch {
+    errorEl.textContent = 'Failed to reach the server.';
+    errorEl.classList.remove('hidden');
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+loadUsers();
+</script>
+</body>
+</html>

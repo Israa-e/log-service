@@ -14,7 +14,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "20mb" }));
 app.use(
     session({
         secret: process.env.SESSION_SECRET || "dev-secret-change-me",
@@ -36,6 +36,7 @@ app.get("/analytics", checkAuth, authPage("analytics.html"));
 app.get("/ingestion", checkAuth, authPage("ingestion.html"));
 app.get("/retention", checkAuth, authPage("retention.html"));
 app.get("/history", checkAuth, authPage("retention.html"));
+app.get("/users", checkAuth, authPage("users.html"));
 app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
 app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
 app.use(express.static(PUBLIC));
@@ -49,6 +50,9 @@ app.use("/support", supportRouter);
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err.type === "entity.parse.failed" || err instanceof SyntaxError) {
     return res.status(400).json({ error: "malformed JSON" });
+  }
+  if (err.type === "entity.too.large") {
+    return res.status(400).json({ error: "payload too large" });
   }
   next(err);
 });

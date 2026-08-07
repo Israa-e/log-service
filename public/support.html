@@ -24,6 +24,7 @@
     <a href="/logs-explorer" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">terminal</span><span class="font-body-md text-body-md">Logs</span></a>
     <a href="/analytics" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">analytics</span><span class="font-body-md text-body-md">Metrics</span></a>
     <a href="/retention" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">history</span><span class="font-body-md text-body-md">Retention</span></a>
+    <a href="/users" class="flex items-center gap-3 px-3 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:text-primary transition-colors"><span class="material-symbols-outlined">group</span><span class="font-body-md text-body-md">Users</span></a>
   </nav>
   <div class="px-4 mt-auto space-y-4">
     <button id="add-log-btn" type="button" class="w-full py-2 bg-primary text-on-primary font-bold rounded hover:opacity-90 transition-all flex items-center justify-center gap-2 cursor-pointer"><span class="material-symbols-outlined text-[18px]">post_add</span>Add Log</button>
@@ -32,8 +33,8 @@
       <a href="/support" class="flex items-center gap-3 px-3 py-1.5 rounded text-secondary font-bold transition-colors"><span class="material-symbols-outlined">support_agent</span><span class="font-body-md text-body-md">Support</span></a>
     </div>
     <div class="flex items-center gap-3 mt-4 px-2">
-      <img class="w-8 h-8 rounded-full border border-outline-variant" alt="Admin" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAyf0i83qAiUFyjaJaor7SyDewQlnItHxNdOK9zpoFlBY0Ir6v-Z_o4TH-uWQIoX39jOTXokQxPS-uxWaz7BdTfE5HoaVbQNk-DibBP_TMKupJ_jmMV5IG6ednbeHWwOvAos0M9oAP56Cr8RE_v5TijB8pWGP_7sL4MIthzJ2-qnT4kjdFq6ITWsTq7q0dRZsRvltD6sGaFF7GVwrrLHmMBMC11exGIrQ4lLir-eM0aqcLx6WzfgSn9"/>
-      <div class="overflow-hidden"><p class="text-[12px] font-bold truncate">Admin Root</p><p class="text-[10px] text-on-surface-variant truncate">cluster-admin-01</p></div>
+      <div id="user-identity-avatar" class="w-8 h-8 rounded-full bg-secondary flex items-center justify-center text-background font-bold text-sm shrink-0">?</div>
+      <div class="overflow-hidden"><p id="user-identity-name" class="text-[12px] font-bold truncate">—</p><p id="user-identity-sub" class="text-[10px] text-on-surface-variant truncate">—</p></div>
     </div>
   </div>
 </aside>

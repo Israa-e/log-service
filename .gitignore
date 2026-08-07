@@ -4,3 +4,4 @@ node_modules
 docs/
 .env
 log-service-test/
+demo/

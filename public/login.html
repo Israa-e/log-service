@@ -21,8 +21,9 @@ html.light body { background-color: #f8f9ff; color: #0b1c30; }
       <p class="text-body-md text-on-surface-variant">v2.4.0-stable</p>
     </div>
     <div class="space-y-4">
-      <div><label class="text-label-caps text-on-surface-variant block mb-1">Password</label><input id="password" type="password" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="Enter your password"></div>
-      <p id="error" class="text-error text-code-sm hidden">Wrong password</p>
+      <div><label class="text-label-caps text-on-surface-variant block mb-1">Username</label><input id="username" type="text" autocomplete="username" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="admin"></div>
+      <div><label class="text-label-caps text-on-surface-variant block mb-1">Password</label><input id="password" type="password" autocomplete="current-password" class="w-full bg-surface-container-low border border-outline-variant rounded px-3 py-2.5 text-body-md text-primary placeholder:text-on-surface-variant/50 focus:outline-none focus:border-secondary transition-all" placeholder="Enter your password"></div>
+      <p id="error" class="text-error text-code-sm hidden">Invalid username or password</p>
       <button onclick="doLogin()" class="w-full py-2.5 bg-primary text-on-primary font-bold rounded hover:opacity-90 active:scale-[0.98] transition-all text-body-md">Sign In</button>
     </div>
   </div>
@@ -31,15 +32,17 @@ html.light body { background-color: #f8f9ff; color: #0b1c30; }
       const btn = document.querySelector('button');
       btn.disabled = true;
       try {
+        const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
         const res = await fetch("/auth/login", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ password })
+          body: JSON.stringify({ username, password })
         });
         if (res.ok) { window.location.href = "/logs-explorer"; }
         else { document.getElementById("error").classList.remove("hidden"); }
       } finally { btn.disabled = false; }
     }
     document.getElementById("password").addEventListener("keypress", e => { if (e.key === "Enter") doLogin(); });
+    document.getElementById("username").addEventListener("keypress", e => { if (e.key === "Enter") doLogin(); });
   </script>
 </body></html>

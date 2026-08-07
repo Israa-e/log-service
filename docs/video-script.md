@@ -1,199 +1,232 @@
-# Final Project Demo — Video Script
+# Final Project Video — Script & Recording Guide
 
-A timed outline for the required demo video/live walkthrough. Target length ~12-15 min.
-Complements the deeper prep in `interview-prep.md`, `hard-questions.md`, `code-explanation.md`,
-and `walkthrough/` — this is the *run order*, those are the *answer bank*.
-
----
-
-## 0. Before you hit record
-
-- [ ] Rotate/confirm the `OPENAI_API_KEY` in `.env` is a fresh, non-committed value (see security note from this session — `.env` was previously tracked in git history).
-- [ ] `docker compose down -v` then `docker compose up -d --build` fresh, so the DB is empty and you can show real ingestion from zero.
-- [ ] Have `scripts/seed.ts` ready but **don't** run it yet — you'll seed live in section 3 so the "queryable within 20s" claim is visibly true.
-- [ ] Two terminals open: one for `docker compose`/`curl`/`psql`, one for editing code.
-- [ ] `psql` connection ready: `psql -h localhost -p 5433 -U loguser -d logdb` (password `logpass`).
+**Goal:** ~5 minute video: architecture explanation + key decisions + live demo.
+**Language:** English narration.
+**Estimated words:** ~750 (≈150 wpm).
 
 ---
 
-## 1. Intro (~1 min)
+## 0. Preparation Checklist (before you press record)
 
-Say what it is in one breath: *"Obsidian Log Engine — a log ingestion and query service in
-TypeScript/Express backed by TimescaleDB, built to the Boot.dev final-project spec: batch
-ingest at 15k+ logs/sec, filterable/paginated query, time-bucketed aggregation, retention,
-all inside a 0.5 CPU/256MB app container and a 1 CPU/1GB db container."*
+- [ ] Start the stack: `docker compose up -d --build`
+- [ ] Pre-seed 1M rows **before** recording (takes ~60s, don't record it):
+      `npx tsx scripts/seed.ts`
+- [ ] Verify dashboard works: open `http://localhost:8080` → login `LogService2026!`
+- [ ] Open all terminals/pages you need in advance; keep them organized side by side
+- [ ] Increase terminal font (Ctrl + '+' in Windows Terminal) so text is readable
+- [ ] Close Slack/Teams/email — no notifications during the recording
+- [ ] Practice the full script once while reading it from a teleprompter or a second screen
 
+### Windows Tip — enable the mouse-click highlight
+Settings → Accessibility → Mouse pointer → "Pointer visibility" on.
+
+---
+
+## 1. Segment 1 — Intro (0:00–0:25)
+
+**Screen:** Title card (project name), then the architecture diagram slide.
+
+**Narration:**
+> Hi, this is my final project: Obsidian Log Engine — a high-performance log ingestion and
+> query service, inspired by Datadog and Grafana Loki. Applications send structured logs to
+> a REST API, and the service stores them, makes them searchable, and aggregates them.
+>
+> The stack is TypeScript with Express on the front, and PostgreSQL 16 with TimescaleDB as
+> the source of truth. The system is designed around three concerns: ingestion, querying,
+> and retention — and it's built to sustain 15,000 logs per second while holding over a
+> million rows.
+
+---
+
+## 2. Segment 2 — Architecture & Key Decisions (0:25–1:25)
+
+**Screen:** Architecture diagram (Browser → Express → services → Pool → TimescaleDB), then
+`src/services/logsService.ts` highlighting the `unnest` INSERT (lines 90–103).
+
+**Narration:**
+> The server is layered: routes only map URLs, controllers handle HTTP, and services contain
+> the actual SQL. That separation lets me test the logic without the HTTP layer.
+>
+> The first key decision is the database. Logs are time-series data, so I used TimescaleDB:
+> the logs table becomes a hypertable partitioned by timestamp. Chunks are dropped whole at
+> retention time, and time-range queries skip entire chunks — that's the foundation of the
+> performance.
+>
+> The second key decision is ingestion. The spec demands fifteen thousand logs per second,
+> so we never insert one row at a time. Instead, each HTTP batch becomes one INSERT using
+> Postgres `unnest` — one array per column. The query text stays the same size no matter how
+> big the batch is, so Postgres doesn't re-parse a growing statement on every request. This
+> single change was the biggest throughput win.
+
+---
+
+## 3. Segment 3 — Schema & Index Design (1:25–2:10)
+
+**Screen:** `src/db/schema.sql`, then `src/db/indexes.sql`.
+
+**Narration:**
+> The schema has three tables. `logs` has a composite primary key of id and timestamp, which
+> TimescaleDB requires. Level, service, and message are plain text; attributes are JSONB.
+>
+> The attribute storage decision is worth explaining. The spec says attribute filters compare
+> as strings, so I filter with `attributes ->> 'key' = 'value'` — text extraction. There is no
+> GIN index on attributes, because GIN only accelerates the containment operator, not `->>`,
+> and the key is dynamic per request, so a static expression index is impossible. Instead,
+> attribute filters are always bounded by the time range, and chunk exclusion keeps the scan
+> small.
+>
+> For the indexes: service and level get composite indexes with timestamp descending, and
+> message search uses a trigram GIN index so `ILIKE '%word%'` doesn't do a full scan.
+>
+> All queries use parameterized statements with numbered placeholders — including dynamic
+> attribute keys — so SQL injection isn't possible.
+
+---
+
+## 4. Segment 4 — Live Demo: Core API (2:10–3:35)
+
+**Screen:** Terminal. Run these commands **slowly**, one at a time, narrating as you go.
+
+### 4.1 Health check
 ```bash
 docker compose up -d --build
 curl http://localhost:8080/health
 ```
+> The server only starts listening after the database is reachable and migrations have
+> applied, so a 200 here means the whole system is ready.
 
-Expect `200` only once migrations have applied and the DB is ready — show this is a real
-readiness check, not a static `200`.
+### 4.2 Ingestion with per-entry validation
+```bash
+curl -s -X POST http://localhost:8080/logs -H "Content-Type: application/json" -d '{
+  "logs": [
+    {"timestamp": "2026-07-20T14:32:01.123Z", "level": "error",   "service": "checkout", "message": "payment declined", "attributes": {"user_id": "42", "region": "eu-west"}},
+    {"timestamp": "2026-07-20T14:32:01.124Z", "level": "fatal",   "service": "checkout", "message": "bad level"},
+    {"timestamp": "2026-07-20T14:32:01.125Z", "level": "info",    "service": "auth",     "message": "session created", "attributes": {"user_id": "42"}}
+  ]
+}'
+```
+> One entry has an invalid level — fatal isn't allowed. The valid entries are accepted, and
+> the invalid one is reported with its index and reason, without failing the batch.
+
+Expected:
+```json
+{"accepted": 2, "rejected": [{"index": 1, "reason": "invalid level: 'fatal'"}]}
+```
+
+### 4.3 Query with filters
+```bash
+curl -s "http://localhost:8080/logs?service=checkout&level=error&limit=2"
+```
+> Filters are freely combinable — service, level, time range, attribute equality, and message
+> substring search.
+
+### 4.4 Cursor pagination
+```bash
+curl -s "http://localhost:8080/logs?service=checkout&level=error&limit=2&cursor=<paste next_cursor from previous response>"
+```
+> Every response includes an opaque next_cursor. Passing it back resumes exactly where the
+> last page ended, sorted by timestamp descending with id as the deterministic tiebreaker.
+> When there are no more results, next_cursor is null.
+
+### 4.5 Aggregation (the money shot — 1M rows are already seeded)
+```bash
+curl -s "http://localhost:8080/logs/aggregate?since=2026-07-01T00:00:00Z&until=2026-07-31T23:59:59Z&bucket=5m&group_by=service"
+```
+> Aggregation uses TimescaleDB's time_bucket: counts per five-minute bucket, optionally
+> grouped by service or level, ordered by bucket start. This runs against the seeded million
+> rows.
 
 ---
 
-## 2. Schema & indexes (~2-3 min)
+## 5. Segment 5 — Live Demo: Retention + Dashboard (3:35–4:15)
 
-Open `src/db/schema.sql` and `src/db/indexes.sql` side by side.
+### 5.1 Retention
+```bash
+curl -s -X POST http://localhost:8080/logs/retention/run
+```
+> Retention is configurable with RETENTION_DAYS — thirty by default. A background job runs
+> hourly and calls drop_chunks, which removes entire expired time chunks from disk instead of
+> deleting rows one by one. That means no long-running locks and no table bloat.
 
-**Schema** — three tables: `logs` (the core one), `alert_rules`, `notifications`.
-Point at:
-- `PRIMARY KEY (id, timestamp)` — composite key is required because `logs` becomes a
-  TimescaleDB **hypertable** partitioned on `timestamp` (`src/db/migrate.ts` calls
-  `create_hypertable`) — a hypertable's partitioning column must be part of every unique
-  constraint.
-- `attributes JSONB` — flexible per-log key/value data without a schema migration per field.
+### 5.2 Dashboard
+Open `http://localhost:8080` → log in → click through the tabs quickly.
 
-**Indexes** — read `indexes.sql` line by line, it's written to be read aloud:
-- `idx_logs_service (service, timestamp DESC)` and `idx_logs_level (level, timestamp DESC)` —
-  composite so a filtered scan is already in the right sort order for `ORDER BY timestamp DESC`.
-- `idx_logs_message_trgm` (GIN trigram) — the only way to accelerate `ILIKE '%q%'` (leading
-  wildcard defeats a plain B-tree).
-- **The interesting one:** `DROP INDEX IF EXISTS idx_logs_attributes`. Explain this is a
-  *deliberate removal*, not an oversight — say it exactly like this:
-  > "`attr.<key>` filters use `attributes ->> key = value` — text extraction, because
-  > attribute values need to compare correctly whether they were stored as a string, number,
-  > or boolean. A GIN index only accelerates the `@>` containment operator, not `->>` — and
-  > since the key itself is chosen per-request, there's no fixed key to build an expression
-  > index around anyway. So instead of a dead-weight index, we rely on TimescaleDB **chunk
-  > exclusion**: every `attr.<key>` query is expected to carry `since`/`until`, and Postgres
-  > skips whole chunks outside that range before it ever touches `attributes`."
-
-This is the single most-probed design decision in the rubric (see `hard-questions.md` Q1) —
-know it cold, don't read it off the screen.
+**Narration:**
+> Beyond the API there's a dashboard. The logs explorer combines all the filters with cursor
+> pagination, analytics renders the aggregated buckets with ECharts, and the ingestion tab
+> lets you send batches manually. There's also alerting — rules that fire a webhook when an
+> error threshold is exceeded in a time window — and an AI support chat that answers
+> questions using live database context.
 
 ---
 
-## 3. Live ingestion (~2 min)
+## 6. Segment 6 — Performance Results (4:15–4:50)
+
+**Screen:** Run the load test (optional, ~20s) and show the README results table side by side.
 
 ```bash
 BATCH_SIZE=500 CONNECTIONS=8 DURATION=20 node load-test.js
 ```
 
-While it runs, in the other terminal:
-
-```bash
-watch -n1 "docker stats --no-stream"
-```
-
-Narrate what you expect and then point at it happening: db container pinned near 100% of its
-1 CPU quota (the bottleneck), app container comfortably under its 0.5 CPU quota. Report the
-measured throughput from README (~15,100-17,700 logs/sec at this profile) and confirm the run
-matches roughly.
-
-Then prove "new data queryable within 20s":
-
-```bash
-curl "http://localhost:8080/logs?limit=1"
-```
-
-Show a row with a `timestamp` from seconds ago.
+**Narration:**
+> The load test ran with the exact grading limits: half a CPU and 256 megabytes for the app,
+> one CPU and one gigabyte for the database. With batches of five hundred logs, we sustained
+> about seventeen thousand logs per second — above the fifteen thousand target. The database
+> container runs at ninety-five to one hundred percent CPU during ingestion, which confirms
+> the database is the bottleneck, not the application.
+>
+> The optimizations that got us there: unnest-based batch inserts, removing a redundant count
+> query from the cursor path, and Postgres tuning — synchronous commit off, larger shared
+> buffers, and a bigger WAL cap.
+>
+> One honest caveat: under sustained heavy ingestion, the aggregation query occasionally
+> exceeds one second at p95 — that's CPU contention on the database's single core, and the
+> next step would be pre-computed rollup tables.
 
 ---
 
-## 4. Query + pagination + aggregation (~2 min)
+## 7. Segment 7 — Limitations & Outro (4:50–5:00)
 
-```bash
-curl "http://localhost:8080/logs?service=checkout&level=error&limit=5"
-curl "http://localhost:8080/logs?service=checkout&limit=5&cursor=<next_cursor from above>"
-curl "http://localhost:8080/logs/aggregate?since=2026-08-02T00:00:00Z&until=2026-08-02T23:59:59Z&bucket=1h&group_by=service"
-```
+**Screen:** Known Limitations slide.
 
-Narrate the cursor: it's `base64(timestamp, id)`, decoded into `WHERE (timestamp, id) <
-($1, $2)` — keyset pagination, not `OFFSET`, so page N doesn't get slower as N grows.
-
-Walk the code path once, fast, so the grader sees you know where everything lives:
-`src/routes/logs.ts` → `src/controllers/logsController.ts` (`getLogs`/`aggregateLogs`, just
-error-shape translation) → `src/services/logsService.ts` (`queryLogs` ~line 176,
-`queryAggregate` ~line 250) — that's where the actual SQL is built.
+**Narration:**
+> The known limitations are documented honestly in the README: attribute filters without a
+> time range do a full scan, retention granularity is one chunk interval, and the app runs via
+> tsx rather than a compiled build. Those are trade-offs I made consciously.
+>
+> The full project — code, CI pipeline, load test methodology, and measured results — is on
+> GitHub, and everything starts with a single docker compose up. Thanks for watching.
 
 ---
 
-## 5. EXPLAIN ANALYZE (~3 min) — the part you must not improvise
+## 8. Recording Guide (OBS)
 
-Run these against the seeded/loaded data (`psql -h localhost -p 5433 -U loguser -d logdb`):
+### OBS Settings
+| Setting | Value |
+|---|---|
+| Base/Output resolution | 1920x1080, 30 fps |
+| Recording format | MP4 |
+| Encoder | Hardware (NVENC) if available, else x264 "veryfast" |
+| Audio | Microphone, 48 kHz, +10 dB gain test first |
 
-**a) Indexed filter — expect an Index Scan:**
-```sql
-EXPLAIN ANALYZE
-SELECT * FROM logs WHERE service = 'checkout' ORDER BY timestamp DESC LIMIT 25;
-```
-Point at `Index Scan using idx_logs_service` in the plan output and the actual execution time.
+### Scene layout (suggested)
+- **Scene 1 — Intro:** image slide (title) full-screen
+- **Scene 2 — Terminal:** full-screen terminal window (Windows Terminal, dark theme)
+- **Scene 3 — Code:** VS Code with the file open, font 18+
+- **Scene 4 — Dashboard:** full-screen browser
+- You can build the diagram slides in draw.io / PowerPoint / Excalidraw and screenshot them.
 
-**b) attr.<key> WITH a time range — expect chunk exclusion (fewer chunks touched):**
-```sql
-EXPLAIN ANALYZE
-SELECT * FROM logs
-WHERE timestamp >= now() - interval '1 hour' AND attributes ->> 'region' = 'eu-west';
-```
-Point at the plan only scanning recent chunks, not the whole hypertable — this is the chunk
-exclusion claim made concrete.
+### Pro tips
+1. **Record in segments**, one per scene — cut between scenes in editing. Much easier than one
+   perfect take.
+2. **Fix the demo before recording**: run every curl once first, so there are no surprises.
+3. **Keep the mouse still** while talking; move it only when pointing at things.
+4. **Pause 2–3 seconds** at the start of each segment before speaking (easy edit point).
+5. Simple edits: CapCut / DaVinci Resolve (free) — just cut at pauses and add the title card.
+6. **Speed check:** read the script aloud once with a timer — 750 words should land at ~5 min.
 
-**c) attr.<key> WITHOUT a time range — expect a full/sequential scan (the known limitation):**
-```sql
-EXPLAIN ANALYZE
-SELECT * FROM logs WHERE attributes ->> 'region' = 'eu-west';
-```
-Say it plainly: *"this is the documented known limitation — no index can serve a dynamic-key
-JSONB text comparison, so an attribute filter with no time bound scans everything. In practice
-the API and dashboard always pair `attr.*` with `since`/`until`."*
-
-**d) Aggregation — expect it under 1s even with concurrent load:**
-```sql
-EXPLAIN ANALYZE
-SELECT time_bucket('1 hour', timestamp) AS bucket, service, COUNT(*)
-FROM logs
-WHERE timestamp >= now() - interval '2 hours'
-GROUP BY bucket, service ORDER BY bucket;
-```
-
----
-
-## 6. Live modify/extend (~2 min) — pick ONE, rehearse it once beforehand
-
-**Primary: add a new aggregate bucket size.**
-Open `src/services/logsService.ts` around line 261 (`bucketMap`) and add a line live:
-```ts
-"10m": "10 minutes",
-```
-Save, the container picks it up via `tsx` (no rebuild needed since there's no compile step —
-mention that's also why "no compiled build step" is a listed known limitation, it's a
-deliberate simplicity tradeoff). Then immediately prove it:
-```bash
-curl "http://localhost:8080/logs/aggregate?since=...&until=...&bucket=10m"
-```
-
-**Fallback if asked for something else on the spot: add a new log level.**
-`VALID_LEVELS` at line 3 of the same file — add `"critical"`, re-run a `POST /logs` with
-`"level": "critical"` and show it now gets accepted instead of rejected. Mention the same
-constant is checked in two places (line 42 ingestion validation, line 285 aggregate query
-validation) — if asked "what else would you need to touch," say exactly that.
-
----
-
-## 7. Wrap-up: known limitations (~1-2 min)
-
-Read these straight from the README's Known Limitations section, don't paraphrase into
-something less precise than what's already written:
-- Aggregate p95 can occasionally exceed 1s under heavy concurrent ingestion — CPU contention
-  on the db container's single core, not a bad query plan (same query runs <100ms with no
-  concurrent writes). Next step if given more time: a continuous aggregate/rollup table.
-- `attr.<key>` without a time range is a full scan (demonstrated live in section 5c).
-- Retention granularity is ~1 chunk interval (7 days default), not exact-to-the-day.
-- No compiled build step (`tsx` directly) — simpler, small runtime overhead tradeoff.
-- No rate limiting/backpressure on `POST /logs`.
-
-Close by pointing at CI (`.github/workflows/ci.yml`) building the stack and smoke-testing the
-API on every push, and that the repo is public with incremental commit history.
-
----
-
-## Things that will bite you if you skip rehearsing them
-
-- The chunk-exclusion explanation (section 2) — it's the single most-asked question and easy
-  to get backwards under pressure (see `hard-questions.md` Q1 for the fully-worked contrast
-  between `@>`/GIN and `->>`/chunk-exclusion).
-- Actually running EXPLAIN ANALYZE live requires seeded data with a realistic time spread —
-  confirm `scripts/seed.ts` ran successfully *before* recording, not during.
-- Don't reference `idx_logs_attributes` as if it still exists — it's dropped, on purpose.
+### Backup plan if something fails during the demo
+- Health check 200, POST returns 400: check the JSON syntax in the terminal (paste from this
+  file to avoid typos).
+- Aggregate returns empty buckets: seed first — `npx tsx scripts/seed.ts`.
+- Docker not running: open Docker Desktop and wait for "Engine running" before `docker compose up`.

@@ -7,8 +7,9 @@ services:
       RETENTION_DAYS: 30
       DB_HOST: db
       DB_PORT: 5432
-      DASHBOARD_PASSWORD: LogService2026!
-      SESSION_SECRET: fts-intern-log-service-secret-key-2026
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin123}
+      SESSION_SECRET: ${SESSION_SECRET:-dev-secret-change-me}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
     depends_on:
       db:
