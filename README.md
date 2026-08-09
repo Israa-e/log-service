@@ -1,4 +1,4 @@
-# Obsidian Log Engine
+# Log Service
 
 A high-performance log ingestion and query service, inspired by Datadog and Grafana Loki. Ingests structured logs at scale, stores them in TimescaleDB, and provides a rich dashboard for search, aggregation, and retention management.
 
