@@ -4,6 +4,14 @@
 **Language:** Arabic narration (primary) or English narration — both scripts below.
 **Estimated words:** ~750 (≈150 wpm).
 
+To make sure the video covers the full project, the narration should explicitly mention:
+- the core API: health, ingestion, querying, aggregation, pagination
+- the database design: PostgreSQL + JSONB + TimescaleDB hypertable
+- the retention and background jobs
+- the dashboard UI pages: logs explorer, analytics, ingestion, retention, users, docs, and support
+- the extra modules: authentication, alerts, notifications, and AI support chat
+- the performance testing and the main bottlenecks/limitations
+
 > **Note (verified against the codebase):** every claim below was checked against the actual
 > source. Two facts to keep exact on camera:
 > - The real `src/` layout is `routes/`, `controllers/`, `services/`, `db/` — validation lives
@@ -68,7 +76,12 @@ app.get('/logs/aggregate', ...)
 > فالـ flow بشكل عام هو:
 > **Client → Express → Validation → Service / Query Builder → PostgreSQL → Response.**
 >
-> وعندي كمان background job مسؤول عن retention وحذف الـ old logs.
+> وبالإضافة لذلك، عندي dashboard ويب مدمج يقدّم صفحات مثل logs explorer، analytics، ingestion,
+> retention، users، docs، و support. هذه الصفحات محمية بـ session auth، بينما الـ API endpoints
+> الأساسية تبقى مفتوحة حسب contract المطلوب.
+>
+> وعندي كمان background job مسؤول عن retention وحذف الـ old logs، بالإضافة إلى alert job
+> و modules إضافية مثل notifications و AI support chat.
 
 **⭐ هون نقطة مهمة:** مش لازم تفتحي كل ملف. أنتِ فقط بدك تثبتي إنك فاهمة architecture.
 
@@ -271,6 +284,15 @@ GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
 > TimescaleDB يستخدم time_bucket حتى يحول الـ timestamps إلى time buckets، وبعدها PostgreSQL
 > يعمل COUNT لكل bucket.
 
+### 👀 سادساً: Dashboard + Auth (إذا كان عندك وقت)
+> وبما إن المشروع فيه واجهة ويب أيضاً، أقدر أفتح `http://localhost:8080` وأوضح إن عندي pages
+> مثل logs explorer و analytics و ingestion و retention و users. هذه الصفحات تعتمد على session
+> auth، بينما الـ API الأساسية تبقى متاحة كما هو مطلوب.
+
+### 👀 سابعاً: Alerts / Notifications / Support (اختياري)
+> وكمان عندي modules إضافية ل alerts، notifications، و AI support chat، وهي تعزز تجربة
+> الـ dashboard لكن لا تغير contract الـ API الأساسي.
+
 ---
 
 ## 🟢 4:05 – 4:35 — Retention + EXPLAIN
@@ -336,27 +358,23 @@ docker stats
 ```text
 0:00  GitHub / README
       ↓
-0:25  VS Code → Project Structure
+0:20  VS Code → Project Structure
       ↓
-1:10  VS Code → logs schema
+0:45  VS Code → logs schema + TimescaleDB + indexes
       ↓
-1:55  VS Code → TimescaleDB + indexes
+1:20  VS Code → POST /logs + unnest
       ↓
-2:30  VS Code → POST /logs + unnest
+2:00  Postman → /health → POST /logs → GET /logs → GET /logs/aggregate
       ↓
-3:15  Postman → /health
+2:50  Browser → dashboard pages (logs explorer / analytics / ingestion / retention / users)
       ↓
-      Postman → POST /logs
+3:20  Quick mention → auth, alerts, notifications, support chat
       ↓
-      Postman → GET /logs
+3:45  VS Code → retention job + drop_chunks
       ↓
-      Postman → GET /logs/aggregate
+4:15  Terminal → docker stats / performance evidence
       ↓
-4:05  VS Code → retention
-      ↓
-4:25  Terminal → docker stats
-      ↓
-4:40  Conclusion
+4:40  Conclusion + trade-offs
 ```
 
 ## ⭐ أهم نصيحة
@@ -415,7 +433,12 @@ docker stats
 > parameterized SQL query. Then the database layer executes that query using PostgreSQL.
 >
 > The database is PostgreSQL with TimescaleDB. There is also a background retention job that
-> periodically removes expired data.
+> periodically removes expired data, plus an alert job and additional modules for
+> notifications and AI support chat.
+>
+> On top of the API, I also serve a dashboard with pages such as logs explorer, analytics,
+> ingestion, retention, users, docs, and support. The dashboard uses session-based auth,
+> while the core API endpoints remain unauthenticated as required.
 >
 > So the overall flow is:
 > **Client → Express → validation → service/query builder → PostgreSQL/TimescaleDB → response.**
@@ -551,6 +574,15 @@ GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
 ```
 > Here I specify a time range and a bucket such as `5m`. TimescaleDB's `time_bucket` groups
 > the logs into five-minute intervals, optionally grouped by service or level.
+
+### Dashboard + Auth (quick mention)
+> I also built a browser-based dashboard with pages such as logs explorer, analytics,
+> ingestion, retention, users, docs, and support. The dashboard uses session-based auth,
+> while the core API endpoints remain unauthenticated as required.
+
+### Alerts / Notifications / Support (optional)
+> In addition, the project includes alerting, in-app notifications, and an AI support chat
+> module. These are additive features and do not change the required API contract.
 
 ---
 
