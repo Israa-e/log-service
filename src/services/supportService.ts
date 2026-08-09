@@ -1,5 +1,5 @@
 const SYSTEM_PROMPT =
-  "You are the AI support assistant for Obsidian Log Engine, a log ingestion and analytics dashboard. " +
+  "You are the AI support assistant for Log Service, a log ingestion and analytics dashboard. " +
   "Help users with log ingestion (POST /logs), querying (GET /logs, ObsidianQL search syntax), aggregation, " +
   "and retention policies. Use the database context provided to answer questions about their actual data. " +
   "Keep answers short and practical.";
@@ -67,7 +67,7 @@ export async function getSupportReply(message: string): Promise<string> {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
         "HTTP-Referer": "https://github.com/anomalyco/log-service",
-        "X-Title": "Obsidian Log Engine",
+        "X-Title": "Log Service",
       },
       body: JSON.stringify({
         model: "gpt-4o-mini",

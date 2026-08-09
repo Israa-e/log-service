@@ -672,7 +672,7 @@ async function markAllNotifRead() {
             <span class="material-symbols-outlined text-sm">expand_more</span>
           </div>
           <div class="doc-section-content">
-            <p><strong>Obsidian Log Engine</strong> is a hyper-fast log analysis dashboard. It uses TimescaleDB partitioned hypertables behind the scenes to perform real-time ingestion and sub-100ms analytics.</p>
+            <p><strong>Log Service</strong> is a hyper-fast log analysis dashboard. It uses TimescaleDB partitioned hypertables behind the scenes to perform real-time ingestion and sub-100ms analytics.</p>
             <p class="mt-2">Logs are automatically aggregated and expired based on retention rules. Uptime status is tracked dynamically across your server nodes.</p>
           </div>
         </div>
@@ -775,7 +775,7 @@ Content-Type: application/json
       <div class="chat-container">
         <div class="chat-messages" id="support-chat-messages">
           <div class="chat-bubble bubble-bot">
-            Hello! I am your Obsidian Log AI Assistant. How can I help you with your cluster configuration, queries, or retention policies today?
+            Hello! I am your Log Service AI Assistant. How can I help you with your cluster configuration, queries, or retention policies today?
           </div>
         </div>
         <div class="chat-input-wrapper">
