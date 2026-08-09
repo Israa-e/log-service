@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc --noEmit",
     "test": "tsx --test src/**/*.test.ts",
-    "demo": "node demo/record.mjs"
+    "demo": "node demo/record.mjs",
+    "generate:swagger": "tsx scripts/generate-swagger.ts"
   },
   "keywords": [],
   "author": "",
@@ -25,8 +26,12 @@
     "yauzl": "^3.4.0"
   },
   "dependencies": {
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
-    "pg": "^8.22.0"
+    "pg": "^8.22.0",
+    "swagger-jsdoc": "^6.3.0",
+    "swagger-ui-express": "^5.0.1"
   }
 }

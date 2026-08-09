@@ -5,6 +5,79 @@ import {
   markAllAsRead,
 } from "../services/notificationService.js";
 
+/**
+ * @swagger
+ * /notifications:
+ *   get:
+ *     summary: List notifications
+ *     tags: [Notifications]
+ *     responses:
+ *       200:
+ *         description: All notifications, newest first
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 notifications:
+ *                   type: array
+ *                   items:
+ *                     $ref: "#/components/schemas/Notification"
+ *       500:
+ *         description: Failed to fetch notifications
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ * /notifications/read-all:
+ *   post:
+ *     summary: Mark all notifications as read
+ *     tags: [Notifications]
+ *     responses:
+ *       200:
+ *         description: All notifications marked as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Success"
+ *       500:
+ *         description: Failed to mark notifications as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ * /notifications/{id}/read:
+ *   post:
+ *     summary: Mark a notification as read
+ *     tags: [Notifications]
+ *     parameters:
+ *       - name: id
+ *         in: path
+ *         required: true
+ *         description: Notification ID
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Notification marked as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Success"
+ *       400:
+ *         description: Invalid notification ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ *       500:
+ *         description: Failed to mark notification as read
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: "#/components/schemas/Error"
+ */
+
 const router = Router();
 
 router.get("/", async (_req, res) => {

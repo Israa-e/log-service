@@ -9,6 +9,7 @@ import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";
 import supportRouter from "./routes/support.js";
 import { checkAuth } from "./controllers/authController.js";
+import { setupSwagger } from "./swagger.js";
 
 import path from "path";
 import { fileURLToPath } from "url";
@@ -40,6 +41,7 @@ app.get("/users", checkAuth, authPage("users.html"));
 app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
 app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
 app.use(express.static(PUBLIC));
+setupSwagger(app);
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
