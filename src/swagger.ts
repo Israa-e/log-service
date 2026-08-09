@@ -218,7 +218,7 @@ const options = {
       }
     }
   },
-  apis: ["./src/routes/*.ts"]
+  apis: ["./src/openapi.yaml"]
 };
 
 export const swaggerSpec = swaggerJsdoc(options);

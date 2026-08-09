@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/swagger.ts"
-      - "src/routes/*.ts"
+      - "src/openapi.yaml"
       - "openapi.json"
       - "package.json"
       - "package-lock.json"

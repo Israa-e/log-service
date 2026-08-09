@@ -1,0 +1,499 @@
+/health:
+  get:
+    summary: Service liveness check
+    tags: [Health]
+    responses:
+      200:
+        description: Service is running
+        content:
+          text/plain:
+            schema:
+              type: string
+              example: OK
+
+/logs:
+  post:
+    summary: Ingest a batch of log entries
+    description: Accepts a batch of log entries. Valid entries are stored; invalid ones are reported per entry.
+    tags: [Logs]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/LogBatch"
+    responses:
+      200:
+        description: At least one entry was accepted
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/InsertResult"
+      400:
+        description: Invalid request body or no entries were valid
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      500:
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+  get:
+    summary: Query logs
+    description: Fetch logs filtered by time range, service, level and full-text search, with offset/page or cursor pagination.
+    tags: [Logs]
+    parameters:
+      - name: service
+        in: query
+        description: Exact service name to filter by
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Comma-separated list of levels (debug, info, warn, error)
+        schema:
+          type: string
+      - name: since
+        in: query
+        description: Only logs at or after this timestamp
+        schema:
+          type: string
+          format: date-time
+      - name: until
+        in: query
+        description: Only logs at or before this timestamp
+        schema:
+          type: string
+          format: date-time
+      - name: q
+        in: query
+        description: Full-text search over messages
+        schema:
+          type: string
+      - name: limit
+        in: query
+        description: Maximum number of rows to return (default 100)
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 1000
+          default: 100
+      - name: page
+        in: query
+        description: 1-based page number (offset pagination)
+        schema:
+          type: integer
+          minimum: 1
+      - name: cursor
+        in: query
+        description: Opaque base64 cursor from the previous response (cursor pagination)
+        schema:
+          type: string
+    responses:
+      200:
+        description: Matching logs
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LogQueryResult"
+      400:
+        description: Invalid query parameters
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/logs/retention/run:
+  post:
+    summary: Run the retention policy
+    description: Deletes log entries older than the configured retention period.
+    tags: [Logs]
+    responses:
+      200:
+        description: Retention run completed
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deleted:
+                  type: integer
+                  description: Number of log rows deleted
+      500:
+        description: Internal server error
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/logs/aggregate:
+  get:
+    summary: Aggregate logs into time buckets
+    description: Returns log counts bucketed by time, optionally grouped by service or level.
+    tags: [Logs]
+    parameters:
+      - name: since
+        in: query
+        required: true
+        description: Bucket window start
+        schema:
+          type: string
+          format: date-time
+      - name: until
+        in: query
+        required: true
+        description: Bucket window end
+        schema:
+          type: string
+          format: date-time
+      - name: bucket
+        in: query
+        required: true
+        description: Bucket interval
+        schema:
+          type: string
+          enum: [1m, 5m, 1h, 1d]
+      - name: group_by
+        in: query
+        description: Split buckets by a field
+        schema:
+          type: string
+          enum: [service, level]
+      - name: q
+        in: query
+        description: Full-text search over messages
+        schema:
+          type: string
+      - name: service
+        in: query
+        description: Exact service name to filter by
+        schema:
+          type: string
+      - name: level
+        in: query
+        description: Comma-separated list of levels (debug, info, warn, error)
+        schema:
+          type: string
+    responses:
+      200:
+        description: Aggregated buckets
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AggregateResult"
+      400:
+        description: Invalid query parameters
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/auth/login:
+  post:
+    summary: Log in and start a session
+    tags: [Auth]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+                format: password
+    responses:
+      200:
+        description: Login succeeded, session cookie set
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                success:
+                  type: boolean
+                  example: true
+                username:
+                  type: string
+      400:
+        description: Missing username or password
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      401:
+        description: Invalid credentials
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      500:
+        description: Could not start session
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/auth/logout:
+  post:
+    summary: Log out and destroy the session
+    tags: [Auth]
+    security:
+      - cookieAuth: []
+    responses:
+      200:
+        description: Logged out
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+
+/auth/session:
+  get:
+    summary: Get session status
+    tags: [Auth]
+    responses:
+      200:
+        description: Session details
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authenticated:
+                  type: boolean
+                  example: true
+                username:
+                  type: string
+                id:
+                  type: integer
+      401:
+        description: Not authenticated
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                authenticated:
+                  type: boolean
+                  example: false
+
+/auth/users:
+  get:
+    summary: List users
+    tags: [Auth]
+    security:
+      - cookieAuth: []
+    responses:
+      200:
+        description: Registered users
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                users:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/User"
+      401:
+        $ref: "#/components/responses/Unauthorized"
+  post:
+    summary: Create a user
+    tags: [Auth]
+    security:
+      - cookieAuth: []
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [username, password]
+            properties:
+              username:
+                type: string
+              password:
+                type: string
+                format: password
+                minLength: 8
+    responses:
+      201:
+        description: User created
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                user:
+                  $ref: "#/components/schemas/User"
+      400:
+        description: Missing or invalid username/password
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      401:
+        $ref: "#/components/responses/Unauthorized"
+      409:
+        description: Username already taken
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/alerts:
+  post:
+    summary: Create an alert rule
+    description: Creates a rule that fires a webhook notification when the error count in the window meets the threshold.
+    tags: [Alerts]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/AlertRule"
+    responses:
+      201:
+        description: Alert rule created
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AlertRule"
+      400:
+        description: Invalid rule
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/alerts/list:
+  get:
+    summary: List alert rules
+    tags: [Alerts]
+    responses:
+      200:
+        description: All alert rules, newest first
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/AlertRule"
+      500:
+        $ref: "#/components/responses/InternalError"
+
+/notifications:
+  get:
+    summary: List notifications
+    tags: [Notifications]
+    responses:
+      200:
+        description: All notifications, newest first
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notifications:
+                  type: array
+                  items:
+                    $ref: "#/components/schemas/Notification"
+      500:
+        description: Failed to fetch notifications
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/notifications/read-all:
+  post:
+    summary: Mark all notifications as read
+    tags: [Notifications]
+    responses:
+      200:
+        description: All notifications marked as read
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      500:
+        description: Failed to mark notifications as read
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/notifications/{id}/read:
+  post:
+    summary: Mark a notification as read
+    tags: [Notifications]
+    parameters:
+      - name: id
+        in: path
+        required: true
+        description: Notification ID
+        schema:
+          type: integer
+    responses:
+      200:
+        description: Notification marked as read
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Success"
+      400:
+        description: Invalid notification ID
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      500:
+        description: Failed to mark notification as read
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+
+/support/chat:
+  post:
+    summary: Ask the AI support assistant
+    tags: [Support]
+    requestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [message]
+            properties:
+              message:
+                type: string
+    responses:
+      200:
+        description: Assistant reply
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reply:
+                  type: string
+      400:
+        description: Message is required
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
+      502:
+        description: Support agent unavailable
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/Error"
