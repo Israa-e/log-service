@@ -196,22 +196,30 @@ SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::
 
 ---
 
-## 🟢 3:15 – 4:05 — Live Demo للـ API
+## 🟢 3:15 – 4:05 — Live Demo للـ API عبر Swagger
 
-هون بدك **توقفي عن VS Code وتروحي لـ Postman أو curl**. أنا أفضل **Postman** إذا مرتب عندك.
+هون بدك **توقفي عن VS Code وتفتحي Swagger UI**: `http://localhost:8080/api-docs`
+في المتصفح. هذه الأقوى للفيديو، لأنها شاشة موثّقة ونظيفة للـ API: كل endpoint مع
+params و request body، وتقدر تجرّبها مباشرة بنفس الشاشة بدون Postman أو curl.
+
+### 👀 تحضير الشاشة
+قبل لا تسجّلي، افتحي `/api-docs` وسوّي **Expand** (السهم اللي بجانب العنوان) على
+الـ endpoints اللي بدك تظهريها: `GET /health`, `POST /logs`, `GET /logs`,
+`GET /logs/aggregate`. خليها مفتوحة حتى تنتقلي بينها بنقرة mouse وحدة أثناء الكلام،
+وبشكل عام اشرحي إن كل endpoint موثق هنا: param, request/response body, والخيارات المتاحة.
 
 ### 👀 أول شيء: `/health`
-```http
-GET /health
-```
-النتيجة: `200 OK`
+قسم **Health** ← `GET /health` ← **Try it out** ← **Execute**.
+النتيجة: `200` مع نص `OK`.
 
 > أولاً أتأكد إن الـ service جاهز من خلال health endpoint.
-> هون الـ application ما بعتبر نفسه healthy إلا بعد ما يكون database connection جاهز
-> والـ database setup خلص (المشروع بستنى الـ DB وبطبق الـ migrations قبل ما يبدأ يسمع).
+> نلاحظ هنا إن شاشة الـ API نفسها موثّقة بـ description و responses،
+> وهذا هو الـ spec اللي بنيت المشروع بأسه (OpenAPI 3).
+> الـ endpoint ما بيعرض 200 إلا بعد ما يكون database connection جاهز والـ migrations
+> خلصت، لأن المشروع بستنى الـ DB وبطبق الـ migrations قبل ما يبدأ يستقبل.
 
-### 👀 ثانياً: `POST /logs`
-اعملي request فيه مثلاً 3 logs:
+### ثانياً: `POST /logs`
+قسم **Logs** ← `POST /logs` ← **Try it out**، وحطي الـ body ده بدل ما تعبيه يدوياً:
 
 ```json
 {
@@ -239,7 +247,7 @@ GET /health
 }
 ```
 
-النتيجة المتوقعة (exact):
+← **Execute**. النتيجة المتوقعة (exact):
 
 ```json
 {
@@ -253,45 +261,55 @@ GET /health
 > هون بعمل ingestion حقيقي.
 > عندي ثلاثة entries، واحدة منهم فيها invalid level (`critical` مش مسموح — المسموح هو
 > `debug|info|warn|error`).
-> لاحظوا إن الـ API ما رفض الـ whole batch.
-> قبل الـ valid logs، ورفض فقط الـ invalid entry مع الـ index والسبب.
+> لاحظوا إن الـ API ما رفض الـ whole batch. قبل الـ valid logs، ورفض فقط الـ invalid entry
+> مع الـ index والسبب. وفي الـ Swagger الشكل موثق باسم `InsertResult`: فيه `accepted`
+> و `rejected`.
 
-### 👀 ثالثاً: `GET /logs`
-```text
-GET /logs?service=checkout&level=error
-```
+### ثالثاً: `GET /logs`
+قسم **Logs** ← `GET /logs` ← **Try it out**، وحطي في خانة الـ parameters:
+`service=checkout` و `level=error` ← **Execute**.
 
-> الآن بقدر أعمل query على الـ logs.
-> مثلاً هون بفلتر حسب service و level.
+> الآن بقدر أعمل query على الـ logs. مثلاً هون بفلتر حسب service و level.
+> لاحظ إن كل parameter في الـ Swagger ومعتمد عليه description وخياراته (مثل `level`
+> على `debug|info|warn|error`).
 > الـ filters ممكن تتجمع مع بعض، والـ SQL يتم بناؤه باستخدام parameterized queries، لذلك
 > user input ما يتم إدخاله مباشرة داخل SQL.
 
-### 👀 رابعاً: Pagination
-إذا الـ response فيه `"next_cursor": "..."` اعمل request ثاني باستخدامه.
+### رابعاً: Pagination
+في response الـ `GET /logs`، إذا في `"next_cursor": "..."`، انسخيها وحطيها في حقل
+`cursor` ورجعي الـ Execute.
 
 > الـ API يستخدم cursor-based pagination بدل OFFSET.
 > الـ cursor يمثل آخر row في الصفحة الحالية باستخدام timestamp و id.
 > وبالتالي الصفحة التالية تقدر تبدأ مباشرة من هذا المكان، بدل ما PostgreSQL تفحص وتخطي
-> آلاف الـ rows مثل OFFSET.
+> آلاف الـ rows مثل OFFSET. هذا الحقل `next_cursor` موجود وموثق في الـ response schema.
 
-### 👀 خامساً: Aggregate
-```text
-GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
-```
+### خامساً: Aggregate
+قسم **Logs** ← `GET /logs/aggregate` ← **Try it out**، وحطي `since` و `until`
+(مثلاً آخر ساعة) مع `bucket=5m` و `group_by=service` ← **Execute**.
 
-> وأخيراً عندي aggregation.
-> هون أحدد time range و bucket size، مثلاً خمس دقائق، وأقدر أعمل grouping حسب service.
+> وأخيراً عندي aggregation. هون أحدد time range و bucket size، مثلاً خمس دقائق، وأقدر
+> أعمل grouping حسب service.
 > TimescaleDB يستخدم time_bucket حتى يحول الـ timestamps إلى time buckets، وبعدها PostgreSQL
-> يعمل COUNT لكل bucket.
+> يعمل COUNT لكل bucket — والـ schema توضح إن الـ response عبارة عن `buckets` كل واحد فيه
+> `start` و `group` و `count`.
 
-### 👀 سادساً: Dashboard + Auth (إذا كان عندك وقت)
+### سادساً: Dashboard + Auth (اختياري)
 > وبما إن المشروع فيه واجهة ويب أيضاً، أقدر أفتح `http://localhost:8080` وأوضح إن عندي pages
 > مثل logs explorer و analytics و ingestion و retention و users. هذه الصفحات تعتمد على session
-> auth، بينما الـ API الأساسية تبقى متاحة كما هو مطلوب.
+> auth، بينما الـ API الأساسية تبقى متاحة كما هو مطلوب. وهنا نقطة جيدة: الـ maybe endpoints
+> اللي محمية (مثل `GET /auth/users`) في الـ Swagger عليها قفل `cookieAuth`، اشرحي إن الحماية
+> هذه للداشبورد فقط.
 
-### 👀 سابعاً: Alerts / Notifications / Support (اختياري)
-> وكمان عندي modules إضافية ل alerts، notifications، و AI support chat، وهي تعزز تجربة
-> الـ dashboard لكن لا تغير contract الـ API الأساسي.
+### سابعاً: Alerts / Notifications / Support (اختياري)
+> وكمان في الـ Swagger بقدر أوسّع وأظهر بقية الـ modules: `POST /alerts` (body موثق)
+> و `GET /notifications` و `POST /support/chat`. هي ميزات إضافية تعزز تجربة الـ dashboard
+> لكن لا تغير الـ contract الأساسي.
+
+### ⭐ ملاحظة أمان للتسجيل
+شغّلي كل request مرتين قبل ما تسجّلي، وحطي الـ JSON من هذه الصفحة (نسخ/لصق) حتى ما
+تصير أخطاء إملاء سريعة على الكاميرا. إذا أي endpoint رجع `500`، ببساطة نصحي البيانات
+وشغّليه مرا تانية.
 
 ---
 
@@ -364,7 +382,7 @@ docker stats
       ↓
 1:20  VS Code → POST /logs + unnest
       ↓
-2:00  Postman → /health → POST /logs → GET /logs → GET /logs/aggregate
+2:00  Swagger UI → /health → POST /logs → GET /logs → GET /logs/aggregate
       ↓
 2:50  Browser → dashboard pages (logs explorer / analytics / ingestion / retention / users)
       ↓
@@ -528,18 +546,31 @@ docker stats
 
 ---
 
-## 3:25 – 4:10 | Live Demo — API
+## 3:25 – 4:10 | Live Demo — API via Swagger
 
-**Screen:** Postman or curl. Run each step slowly and narrate.
+**Screen:** Swagger UI at `http://localhost:8080/api-docs` in the browser. This is the
+strongest demo surface: the whole API is documented in one view (params, request/response
+schemas) and every request runs in place with **Try it out** — no Postman or curl needed.
+
+**Prepare the screen before recording:** expand (`GET /health`, `POST /logs`,
+`GET /logs`, `GET /logs/aggregate`) using the arrows so you can hop between them with a
+single click while narrating.
 
 ### `/health`
-```http
-GET /health
-```
+In the **Health** section, expand `GET /health` → **Try it out** → **Execute**.
+Result: `200` with body `OK`.
+
+> Notice that the API itself is self-documented here — each endpoint has descriptions and
+> declared response schemas. This is the OpenAPI 3 spec the project serves at `/api-docs`
+> and `/api-docs.json`.
+>
 > The server only starts listening after the database is reachable and migrations have
 > applied, so a 200 here means the whole system is ready.
 
 ### `POST /logs`
+In the **Logs** section, expand `POST /logs` → **Try it out**, paste this body (also
+available as the documented example), and hit **Execute**:
+
 ```json
 {
   "logs": [
@@ -554,35 +585,49 @@ Expected exact response:
 { "accepted": 2, "rejected": [ { "index": 2, "reason": "invalid level: 'critical'" } ] }
 ```
 > This demonstrates per-entry validation: the valid entries are accepted and only the invalid
-> one is reported, with its index and reason, without failing the batch.
+> one is reported, with its index and reason, without failing the batch. The response shape is
+> documented in Swagger as the `InsertResult` schema — `accepted` and `rejected`.
 
 ### `GET /logs`
-```text
-GET /logs?service=checkout&level=error
-```
+Expand `GET /logs` → **Try it out**, fill in `service=checkout` and `level=error`, then
+**Execute**.
+
 > Filters are freely combinable — service, level, time range, attribute equality, and message
-> substring search. All queries are parameterized, so user input is never concatenated into SQL.
+> substring search. All queries are parameterized, so user input is never concatenated into
+> SQL. Note every parameter is described in the UI, including the allowed `level` values.
 
 ### Cursor pagination
+If the response has a `"next_cursor"`, paste it into the `cursor` parameter and re-run
+**Execute**.
+
 > Every response includes an opaque `next_cursor` representing the last row's timestamp and
 > id. The next request resumes exactly there instead of using OFFSET, which would make
-> PostgreSQL scan and skip thousands of rows.
+> PostgreSQL scan and skip thousands of rows. This field is right there in the documented
+> response schema too.
 
 ### `GET /logs/aggregate`
-```text
-GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
-```
+Expand `GET /logs/aggregate` → **Try it out**, fill in `since`, `until` (e.g. the last
+hour), `bucket=5m`, `group_by=service` → **Execute**.
+
 > Here I specify a time range and a bucket such as `5m`. TimescaleDB's `time_bucket` groups
-> the logs into five-minute intervals, optionally grouped by service or level.
+> the logs into five-minute intervals, optionally grouped by service or level. The schema
+> shows the response is a list of `buckets`, each with `start`, `group`, and `count`.
 
 ### Dashboard + Auth (quick mention)
 > I also built a browser-based dashboard with pages such as logs explorer, analytics,
 > ingestion, retention, users, docs, and support. The dashboard uses session-based auth,
-> while the core API endpoints remain unauthenticated as required.
+> while the core API endpoints remain unauthenticated as required. Good moment to point at
+> the lock icon on protected endpoints like `GET /auth/users` — that's the `cookieAuth`
+> security scheme, which only guards the HTML pages.
 
 ### Alerts / Notifications / Support (optional)
-> In addition, the project includes alerting, in-app notifications, and an AI support chat
-> module. These are additive features and do not change the required API contract.
+> Expand the remaining sections to show the other modules are also documented: `POST /alerts`
+> (with its request body), `GET /notifications`, and `POST /support/chat`. These are additive
+> features and do not change the required API contract.
+
+### ⭐ Recording safety note
+Run each request once before recording and paste the JSON from this file to avoid typos on
+camera. If any call returns `500`, fix the inputs and re-run it once.
 
 ---
 
@@ -639,7 +684,9 @@ GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
 - **Scene 1 — Intro:** README/GitHub page full-screen
 - **Scene 2 — Terminal:** full-screen terminal window (Windows Terminal, dark theme)
 - **Scene 3 — Code:** VS Code with the file open, font 18+
-- **Scene 4 — Postman:** full-screen browser / Postman
+- **Scene 4 — Swagger UI:** full-screen browser with `http://localhost:8080/api-docs` open
+  (the endpoints `GET /health`, `POST /logs`, `GET /logs`, `GET /logs/aggregate`
+  pre-expanded)
 
 ### Pro tips
 1. **Record in segments**, one per scene — cut between scenes in editing. Much easier than one
@@ -651,7 +698,9 @@ GET /logs/aggregate?since=...&until=...&bucket=5m&group_by=service
 6. **Speed check:** read the script aloud once with a timer — 750 words should land at ~5 min.
 
 ### Backup plan if something fails during the demo
-- Health check 200, POST returns 400: check the JSON syntax in the terminal (paste from this
-  file to avoid typos).
+- Health check 200, POST returns 400: check the JSON body you pasted in Swagger UI (paste from
+  this file to avoid typos).
 - Aggregate returns empty buckets: seed first — `npx tsx scripts/seed.ts`.
+- Swagger UI doesn't load: the app is listening on `:8080` — verify with `docker compose up -d`
+  and open `http://localhost:8080/api-docs`.
 - Docker not running: open Docker Desktop and wait for "Engine running" before `docker compose up`.

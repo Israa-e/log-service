@@ -20,7 +20,9 @@ docker compose up -d --build
 ```
 
 - API → `http://localhost:8080`
-- Dashboard → `http://localhost:8080/` (password: `LogService2026!`)
+- Swagger UI → `http://localhost:8080/api-docs`
+- Swagger JSON → `http://localhost:8080/api-docs.json`
+- Dashboard → `http://localhost:8080/` (default login: `admin` / `admin123`)
 
 ## Dashboard Screens
 
@@ -40,9 +42,10 @@ View total events, retention period, active services, and last retention run. Tr
 ![Retention](screens/retention.png)
 
 ### Add Logs 
+
 Manual log ingestion interface — submit log entries with timestamp, level, service, message, and optional attributes.
 
-![Logs Explorer](screens/addLogs.png)
+![Add Logs](screens/addLogs.png)
 
 ### AI Support Chat
 Real-time AI-powered support assistant for cluster configuration, queries, and retention policies.
@@ -83,6 +86,7 @@ Invalid entries are reported by index without failing the batch:
 | `attr.<key>` | Attribute equality |
 | `q` | Case-insensitive message search |
 | `limit` | Max results (default 100, max 1000) |
+| `page` | 1-based page number (offset pagination) |
 | `cursor` | Opaque pagination cursor |
 
 ### `GET /logs/aggregate` — Aggregation
@@ -100,7 +104,7 @@ Manually trigger retention cleanup (deletes logs older than `RETENTION_DAYS` env
 ### `POST /auth/login`
 
 ```json
-{ "password": "LogService2026!" }
+{ "username": "admin", "password": "admin123" }
 ```
 
 Returns a session cookie.

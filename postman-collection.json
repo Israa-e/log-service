@@ -1,0 +1,116 @@
+{
+  "info": {
+    "name": "Log Service API",
+    "description": "Collection for the log ingestion and query service",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/health",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["health"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /logs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"logs\": [\n    {\n      \"timestamp\": \"2026-08-09T08:00:00Z\",\n      \"level\": \"error\",\n      \"service\": \"checkout\",\n      \"message\": \"payment declined\",\n      \"attributes\": {\n        \"user_id\": \"42\",\n        \"region\": \"eu-west\",\n        \"retries\": 3\n      }\n    },\n    {\n      \"timestamp\": \"2026-08-09T08:01:00Z\",\n      \"level\": \"info\",\n      \"service\": \"auth\",\n      \"message\": \"user logged in\"\n    },\n    {\n      \"timestamp\": \"2026-08-09T08:02:00Z\",\n      \"level\": \"critical\",\n      \"service\": \"checkout\",\n      \"message\": \"invalid level\"\n    }\n  ]\n}"
+        },
+        "url": {
+          "raw": "http://localhost:8080/logs",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["logs"]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /logs",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/logs?service=checkout&level=error",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["logs"],
+          "query": [
+            {
+              "key": "service",
+              "value": "checkout"
+            },
+            {
+              "key": "level",
+              "value": "error"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "GET /logs/aggregate",
+      "request": {
+        "method": "GET",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/logs/aggregate?since=2026-08-09T00:00:00Z&until=2026-08-09T23:59:59Z&bucket=5m&group_by=service",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["logs", "aggregate"],
+          "query": [
+            {
+              "key": "since",
+              "value": "2026-08-09T00:00:00Z"
+            },
+            {
+              "key": "until",
+              "value": "2026-08-09T23:59:59Z"
+            },
+            {
+              "key": "bucket",
+              "value": "5m"
+            },
+            {
+              "key": "group_by",
+              "value": "service"
+            }
+          ]
+        }
+      },
+      "response": []
+    },
+    {
+      "name": "POST /logs/retention/run",
+      "request": {
+        "method": "POST",
+        "header": [],
+        "url": {
+          "raw": "http://localhost:8080/logs/retention/run",
+          "host": ["localhost"],
+          "port": "8080",
+          "path": ["logs", "retention", "run"]
+        }
+      },
+      "response": []
+    }
+  ]
+}
