@@ -46,7 +46,7 @@ jobs:
           fi
 
       - name: Publish to SwaggerHub
-        if: ${{ secrets.SWAGGERHUB_API_KEY != '' }}
+        if: env.SWAGGERHUB_API_KEY != ''
         env:
           SWAGGERHUB_API_KEY: ${{ secrets.SWAGGERHUB_API_KEY }}
         run: |
