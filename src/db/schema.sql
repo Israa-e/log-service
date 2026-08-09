@@ -34,3 +34,6 @@ CREATE TABLE IF NOT EXISTS users (
   password_hash TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
+
+CREATE EXTENSION IF NOT EXISTS timescaledb;
+SELECT create_hypertable('logs', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
