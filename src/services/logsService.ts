@@ -19,6 +19,21 @@ type ValidationResult =
   | { valid: true; row: (string | null)[] }
   | { valid: false; reason: string };
 
+export function decodeCursor(cursor: string): { timestamp: string; id: number } {
+    let decoded: { timestamp: string; id: number };
+    try {
+        decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
+    } catch {
+        throw new Error("invalid cursor");
+    }
+
+    if (!decoded || typeof decoded.timestamp !== "string" || typeof decoded.id !== "number") {
+        throw new Error("invalid cursor");
+    }
+
+    return decoded;
+}
+
 export function validateLogEntry(log: LogEntry, now: number = Date.now()): ValidationResult {
     if (typeof log !== "object" || log === null || Array.isArray(log)) {
         return { valid: false, reason: "entry must be an object" };
@@ -137,15 +152,6 @@ export async function queryLogs(query: any) {
         limit = parsedLimit;
     }
 
-    let offset = 0;
-    if (query.page) {
-        const parsedPage = parseInt(query.page, 10);
-        if (isNaN(parsedPage) || parsedPage < 1) {
-            throw new Error("page must be a positive number");
-        }
-        offset = (parsedPage - 1) * limit;
-    }
-
     const conditions: string[] = [];
     const values: any[] = [];
     let paramIndex = 1;
@@ -200,43 +206,19 @@ export async function queryLogs(query: any) {
         }
     }
 
-    // Capture filters for the optional COUNT(*) before cursor pagination adds parameters
-    const filterConditions = [...conditions];
-    const filterValues = [...values];
-
     if (cursor) {
-        let decoded: { timestamp: string; id: number };
-        try {
-            decoded = JSON.parse(Buffer.from(cursor, "base64").toString());
-            if (!decoded || typeof decoded.timestamp !== "string" || typeof decoded.id !== "number") {
-                throw new Error("shape");
-            }
-        } catch {
-            throw new Error("invalid cursor");
-        }
+        const decoded = decodeCursor(cursor);
         conditions.push(`(timestamp, id) < ($${paramIndex}, $${paramIndex + 1})`);
         values.push(decoded.timestamp, decoded.id);
         paramIndex += 2;
     }
 
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
-    const querySql = cursor
-        ? `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit}`
-        : `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit} OFFSET ${offset}`;
+    const querySql = `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit}`;
 
     const result = await pool.query(querySql, values);
 
-    // Cursor pagination (the required API contract) never needs a total, and computing one
-    // would double the query cost on the hot path; only the dashboard's page-number UI needs it.
-    let total: number | null = null;
-    if (!cursor) {
-        const countWhereClause = filterConditions.length > 0 ? `WHERE ${filterConditions.join(" AND ")}` : "";
-        const countResult = await pool.query(
-            `SELECT COUNT(*) FROM logs ${countWhereClause}`,
-            filterValues
-        );
-        total = parseInt(countResult.rows[0].count, 10);
-    }
+    const total = null;
 
     let nextCursor = null;
     if (result.rows.length === limit) {

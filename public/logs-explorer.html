@@ -315,6 +315,18 @@
     const limit = 25;
     let totalLogs = 0;
     let logs = [];
+    let currentCursor = null;
+    let cursorHistory = [];
+    let lastNextCursor = null;
+    let hasMore = false;
+
+    function resetPagination() {
+      currentPage = 1;
+      currentCursor = null;
+      cursorHistory = [];
+      lastNextCursor = null;
+      hasMore = false;
+    }
 
     async function renderLogs() {
       const tbody = document.getElementById('log-tbody');
@@ -322,7 +334,9 @@
 
       const params = new URLSearchParams();
       params.set('limit', limit);
-      params.set('page', currentPage);
+      if (currentCursor) {
+        params.set('cursor', currentCursor);
+      }
 
       if (selectedService) {
         params.set('service', selectedService);
@@ -346,12 +360,16 @@
       if (!data || !data.logs || data.logs.length === 0) {
         tbody.innerHTML = '<tr><td colspan="4" class="py-8 text-center text-on-surface-variant opacity-60">No logs found</td></tr>';
         totalLogs = 0;
+        lastNextCursor = null;
+        hasMore = false;
         updatePagination();
         return;
       }
 
       logs = data.logs;
-      totalLogs = data.total || logs.length;
+      totalLogs = logs.length;
+      lastNextCursor = data.next_cursor || null;
+      hasMore = Boolean(lastNextCursor);
 
       logs.forEach((log, i) => {
         const s = LEVEL_STYLES[log.level] || LEVEL_STYLES.info;
@@ -402,22 +420,14 @@
     }
 
     function updatePagination() {
-      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
-      if (currentPage > totalPages) {
-        currentPage = totalPages;
-      }
-
-      const startRange = (currentPage - 1) * limit + 1;
-      const endRange = Math.min(currentPage * limit, totalLogs);
-
       const rangeSpan = document.getElementById('showing-range');
       if (rangeSpan) {
-        rangeSpan.textContent = totalLogs > 0 ? `${startRange.toLocaleString()} - ${endRange.toLocaleString()}` : '0';
+        rangeSpan.textContent = totalLogs > 0 ? `1 - ${totalLogs.toLocaleString()}` : '0';
       }
 
       const countSpan = document.getElementById('total-count');
       if (countSpan) {
-        countSpan.textContent = totalLogs.toLocaleString();
+        countSpan.textContent = totalLogs > 0 ? `${totalLogs.toLocaleString()} shown` : '0';
       }
 
       const btnFirst = document.getElementById('btn-first');
@@ -437,7 +447,7 @@
         btnPrev.disabled = false;
       }
 
-      if (currentPage === totalPages) {
+      if (!hasMore) {
         btnNext.classList.add('opacity-50', 'cursor-not-allowed');
         btnNext.disabled = true;
         btnLast.classList.add('opacity-50', 'cursor-not-allowed');
@@ -452,66 +462,15 @@
       const pageButtons = document.getElementById('page-buttons');
       if (!pageButtons) return;
       pageButtons.innerHTML = '';
-
-      const addPageBtn = (pageNum, active = false) => {
-        const span = document.createElement('span');
-        span.className = `min-w-8 h-8 px-1.5 flex items-center justify-center rounded font-bold text-code-sm cursor-pointer transition-colors`;
-        if (active) {
-          span.className += ` bg-secondary text-background`;
-        } else {
-          span.className += ` hover:bg-surface-container-high text-on-surface-variant`;
-        }
-        span.textContent = pageNum;
-        span.addEventListener('click', () => {
-          if (currentPage !== pageNum) {
-            currentPage = pageNum;
-            renderLogs();
-          }
-        });
-        pageButtons.appendChild(span);
-      };
-
-      const addEllipsis = () => {
-        const span = document.createElement('span');
-        span.className = `w-8 h-8 flex items-center justify-center text-on-surface-variant`;
-        span.textContent = '...';
-        pageButtons.appendChild(span);
-      };
-
-      if (totalPages <= 5) {
-        for (let p = 1; p <= totalPages; p++) {
-          addPageBtn(p, p === currentPage);
-        }
-      } else {
-        if (currentPage <= 3) {
-          addPageBtn(1, currentPage === 1);
-          addPageBtn(2, currentPage === 2);
-          addPageBtn(3, currentPage === 3);
-          addPageBtn(4, currentPage === 4);
-          addEllipsis();
-          addPageBtn(totalPages, false);
-        } else if (currentPage >= totalPages - 2) {
-          addPageBtn(1, false);
-          addEllipsis();
-          addPageBtn(totalPages - 3, false);
-          addPageBtn(totalPages - 2, currentPage === totalPages - 2);
-          addPageBtn(totalPages - 1, currentPage === totalPages - 1);
-          addPageBtn(totalPages, currentPage === totalPages);
-        } else {
-          addPageBtn(1, false);
-          addEllipsis();
-          addPageBtn(currentPage - 1, false);
-          addPageBtn(currentPage, true);
-          addPageBtn(currentPage + 1, false);
-          addEllipsis();
-          addPageBtn(totalPages, false);
-        }
-      }
+      const pageBadge = document.createElement('span');
+      pageBadge.className = 'min-w-8 h-8 px-1.5 flex items-center justify-center rounded font-bold text-code-sm bg-secondary text-background';
+      pageBadge.textContent = `P${currentPage}`;
+      pageButtons.appendChild(pageBadge);
     }
 
     document.getElementById('btn-first').addEventListener('click', () => {
       if (currentPage !== 1) {
-        currentPage = 1;
+        resetPagination();
         renderLogs();
       }
     });
@@ -519,22 +478,23 @@
     document.getElementById('btn-prev').addEventListener('click', () => {
       if (currentPage > 1) {
         currentPage--;
+        currentCursor = cursorHistory.pop() ?? null;
         renderLogs();
       }
     });
 
     document.getElementById('btn-next').addEventListener('click', () => {
-      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
-      if (currentPage < totalPages) {
+      if (hasMore && lastNextCursor) {
+        cursorHistory.push(currentCursor);
+        currentCursor = lastNextCursor;
         currentPage++;
         renderLogs();
       }
     });
 
     document.getElementById('btn-last').addEventListener('click', () => {
-      const totalPages = Math.max(1, Math.ceil(totalLogs / limit));
-      if (currentPage !== totalPages) {
-        currentPage = totalPages;
+      if (currentPage !== 1) {
+        resetPagination();
         renderLogs();
       }
     });
@@ -547,20 +507,20 @@
     ['info', 'warn', 'error', 'debug'].forEach(lvl => {
       document.getElementById('chk-' + lvl).addEventListener('change', function () {
         if (this.checked) activeLevels.add(lvl); else activeLevels.delete(lvl);
-        currentPage = 1;
+        resetPagination();
         renderLogs();
       });
     });
 
     document.getElementById('service-filter').addEventListener('change', function () {
       selectedService = this.value;
-      currentPage = 1;
+      resetPagination();
       renderLogs();
     });
 
     document.getElementById('search-input').addEventListener('input', function () {
       searchQuery = this.value;
-      currentPage = 1;
+      resetPagination();
       renderLogs();
     });
 
@@ -585,7 +545,7 @@
           b.classList.toggle('text-on-surface-variant', b !== btn);
         });
         timeRangeMenu.classList.add('hidden');
-        currentPage = 1;
+        resetPagination();
         renderLogs();
       });
     });
@@ -602,7 +562,7 @@
     });
 
     document.getElementById('run-btn').addEventListener('click', () => {
-      currentPage = 1;
+      resetPagination();
       renderLogs();
     });
 

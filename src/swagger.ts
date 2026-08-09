@@ -128,7 +128,7 @@ const options = {
             total: {
               type: "integer",
               nullable: true,
-              description: "Total matching rows. Null when cursor pagination is used."
+              description: "Always null for cursor pagination."
             },
             next_cursor: {
               type: "string",

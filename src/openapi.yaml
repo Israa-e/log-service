@@ -43,7 +43,7 @@
               $ref: "#/components/schemas/Error"
   get:
     summary: Query logs
-    description: Fetch logs filtered by time range, service, level and full-text search, with offset/page or cursor pagination.
+    description: Fetch logs filtered by time range, service, level and full-text search using cursor pagination.
     tags: [Logs]
     parameters:
       - name: service
@@ -81,12 +81,6 @@
           minimum: 1
           maximum: 1000
           default: 100
-      - name: page
-        in: query
-        description: 1-based page number (offset pagination)
-        schema:
-          type: integer
-          minimum: 1
       - name: cursor
         in: query
         description: Opaque base64 cursor from the previous response (cursor pagination)
