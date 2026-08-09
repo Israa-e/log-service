@@ -16,6 +16,12 @@ A high-performance log ingestion and query service, inspired by Datadog and Graf
 ## Quick Start
 
 ```bash
+docker compose up --build
+```
+
+The service also works in detached mode if preferred:
+
+```bash
 docker compose up -d --build
 ```
 
