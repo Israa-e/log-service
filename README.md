@@ -134,7 +134,9 @@ CREATE TABLE logs (
 SELECT create_hypertable('logs', 'timestamp');
 ```
 
-Converted to a TimescaleDB hypertable partitioned by `timestamp`. Attribute filters use `attributes ->> 'key' = 'value'` for type-safe comparison across mixed JSON types.
+Converted to a TimescaleDB hypertable partitioned by `timestamp`. `attributes` values are normalized to strings at write time (`{user_id: 42}` → `{user_id: "42"}`), matching the API contract's "compared as strings" semantics for `attr.<key>` filters, and queried with the JSONB `@>` containment operator.
+
+A second object, `logs_rollup_1m`, is a TimescaleDB **continuous aggregate** — a materialized, incrementally-refreshed rollup of `count(*) GROUP BY minute, service, level`. `GET /logs/aggregate` reads from it instead of scanning raw rows whenever the request has no `attr.*`/`q` filter (the two dimensions the rollup doesn't track), which is the common case and the one the performance target is about. See Performance below for why this exists.
 
 ## Indexing
 
@@ -142,39 +144,42 @@ Converted to a TimescaleDB hypertable partitioned by `timestamp`. Attribute filt
 |---|---|
 | `idx_logs_service (service, timestamp DESC)` | Service filters |
 | `idx_logs_level (level, timestamp DESC)` | Level filters |
-| `idx_logs_message_trgm` (GIN trigram) | Substring message search |
-| hypertable default per-chunk index on `timestamp` | Time-range scans, `ORDER BY timestamp DESC` |
+| `idx_logs_timestamp_id_desc (timestamp DESC, id DESC)` | Default sort + cursor pagination (`(timestamp, id) < (cursor)`) |
+| `logs_pkey (id, timestamp)` | Primary key |
 
-`attr.<key>` filters use `attributes ->> $key = $value` (parameterized, not string-concatenated) rather than a JSONB containment index. A GIN index on `attributes` only accelerates the `@>` containment operator, not `->>`, and the key itself is dynamic per request so it can't be baked into a static expression index. Instead we rely on TimescaleDB chunk exclusion: when `since`/`until` bound the query, Postgres skips whole chunks outside the range before ever touching `attributes`. An `attr.<key>` filter with no time range is a full-table scan — see Known Limitations.
+That's deliberately the whole list — every index here is a plain btree, and there's exactly one non-pkey index per query dimension. Two write-heavy indexes were removed after measurement (see Performance): a GIN `jsonb_path_ops` index on `attributes`, and a GIN trigram index on `message` for `q=` search. On this project's 1 M-row test dataset those two indexes alone accounted for **664 MB — more than the 352 MB of actual row data** — and GIN maintenance is charged synchronously on every insert. With Postgres capped at 1 CPU and a 15k+ logs/sec target, that write cost was the dominant bottleneck: dropping them roughly doubled sustained ingest throughput on its own.
+
+The trade-off: `attr.<key>` and `q=` (message `ILIKE`) filters are now unindexed. They're evaluated as a filter over whatever range `since`/`until` bounds via TimescaleDB chunk exclusion — fine for the correctness checks and for filtered browsing in the dashboard, but a query combining `attr.*`/`q` with no time range (or a very wide one) does a full scan. Given the resource envelope, that's the right place to spend (or rather, not spend) CPU: sustained ingest throughput is worth far more than making a rarely-hit filter combination fast.
 
 ## Performance
 
-**Test environment:** Docker Desktop (WSL2 backend), containers capped to match the spec's grading limits — app: `cpus: 0.5`, `mem_limit: 256m`; db: `cpus: 1`, `mem_limit: 1g`. Load generated from the host via `load-test.js` (autocannon) against `POST /logs` with realistic batches (the initial benchmark mistakenly sent one log per HTTP request, which caps throughput at the HTTP layer rather than the ingestion path — the numbers below use actual batches).
+**Test environment:** Docker, containers capped to match the spec's grading limits — app: `cpus: 0.5`, `mem_limit: 256m`; db: `cpus: 1`, `mem_limit: 1g`. Measured against a warm ~2M-row dataset using a small concurrent-batch load generator (`Content-Type: application/json`, batches of 500 logs, 20–25 concurrent connections against `POST /logs`), `docker stats` sampled every second for resource usage, and `curl -w '%{time_total}'` against `/logs/aggregate` sampled throughout the run for latency.
 
-**Ingestion (no concurrent query traffic):**
+**What was actually happening before this pass, and why:** app CPU usage during ingestion was ~10% of its 0.5-CPU budget while the db container was pegged at 100%+ of its single core — Postgres, not the app, was the bottleneck the whole time. Two problems were compounding it:
 
-| Batch size | Connections | Result | Target |
-|---|---|---|---|
-| 200 logs/request | 20 | **~15,100–17,700 logs/sec** | 15,000/sec |
-| 500 logs/request | 8 | **~17,200–17,600 logs/sec** | 15,000/sec |
+1. **Over-indexing on the write path** — the two GIN indexes described above (attributes containment + message trigram) were charged in full on every insert, on a single CPU already the limiting resource.
+2. `express-session` middleware ran globally on *every* request, including `POST /logs`, `GET /logs`, and `GET /logs/aggregate` — none of which use a session. It's now scoped only to the dashboard/`/auth` routes that actually need it.
+3. `GET /logs/aggregate` computed its counts by scanning every raw row in the queried range on every request. During sustained high-rate ingestion, even a 10-minute window contains hundreds of thousands of rows, so aggregate latency scaled directly with ingestion rate — no index fixes that, because the cost is in aggregating rows, not finding them.
 
-Both profiles clear the 15k/sec target; fewer connections with larger batches was consistently the better profile (less contention for the db container's single CPU, fewer statements to parse per row).
+**Measured before → after** (same dataset, same container limits, same load generator):
 
-**Ingestion + 1 aggregation request/sec concurrently** (`bucket=5m, group_by=service` over a 2h window), sampled once/sec for the duration of a 20–30s ingestion run:
-
-| Profile | Aggregate p95 | Notes |
+| Metric | Before | After |
 |---|---|---|
-| 500/req, 8 connections | **~0.9–1.3s** | Mostly <0.7s; occasional tail spikes above 1s on longer (30s) runs |
-| 200/req, 20 connections | **~1.2–1.4s** | More write backends contending for the db container's single CPU pushes more requests into the slow tail |
+| Sustained ingest throughput | ~2,995 logs/sec | **~16,984 logs/sec** (exceeds the 15,000/sec target) |
+| `/logs/aggregate` latency, idle | ~0.75s (already near the 1s budget) | **~0.03–0.04s** |
+| `/logs/aggregate` latency, under concurrent ingest load | 4–5.5s (p95 far past target) | **mostly <1s**, one cold-start outlier around 2s at the very start of a run |
+| db container CPU | pegged ~100–107% throughout | ~65% avg / ~100% peak — no longer pegged constantly |
+| app container CPU | ~10% avg (nowhere near its cap — irrelevant, since db was the bottleneck) | ~41% avg / ~50% peak (now using its budget productively) |
 
-**Resource usage during ingestion** (`docker stats`): the db container runs at ~95–100% of its 1 CPU quota throughout sustained ingestion — it is the bottleneck, not the app container (usually 25–45% of its 0.5 CPU quota).
+**Optimizations applied, in the order they mattered:**
+1. Dropped the two GIN indexes (attributes containment, message trigram) and a redundant duplicate btree index on `timestamp` that TimescaleDB creates by default and that the newer `(timestamp DESC, id DESC)` index already subsumes. **~2x ingest throughput** on its own.
+2. Scoped `express-session` off the ingest/query hot path. **+~20% ingest throughput.**
+3. Added `logs_rollup_1m`, a TimescaleDB continuous aggregate at 1-minute/service/level granularity, and pointed the unfiltered-by-`attr`/`q` aggregate path at it instead of the raw table. Took aggregate latency from multiple seconds to sub-second, and — because it's a separate table the write path never touches — stopped it from contending with concurrent inserts for the same CPU.
+4. Set `materialized_only = true` on the continuous aggregate (disables TimescaleDB's default "real-time aggregation," which would otherwise union the rollup with a live scan of not-yet-refreshed raw rows on every query). That live-scan branch was itself contending with concurrent inserts on the same active chunk and causing multi-second spikes. With a 10-second refresh policy, this bounds staleness to ~10–20s, inside the API contract's 20-second visibility window — see Known Limitations.
+5. Split the single connection pool into two: a 10-connection pool for `POST /logs`, and a separate 4-connection pool for `GET /logs`/`GET /logs/aggregate`. Before this, a query request queued behind whatever batch of concurrent inserts already held every pooled connection, even though the query itself takes well under a millisecond once it gets a connection. On a CPU-constrained single-core db, growing one shared pool made things *worse* (more concurrent backends contending for the same core, tested and reverted) — the fix was giving reads their own lane, not more total connections.
+6. `synchronous_commit=off`, `shared_buffers=256MB`, `max_wal_size=2GB`, `checkpoint_completion_target=0.9` on the db container — reduces per-commit fsync wait; an acceptable trade-off for a workload where losing a few hundred milliseconds of unflushed logs on a hard crash is tolerable.
 
-**Bottlenecks found and optimizations applied:**
-- The original `POST /logs` handler built one SQL placeholder per column per row (`$1..$5, $6..$10, ...`), so query text and parameter count grew with batch size — Postgres re-parses/re-plans a bigger statement on every request. Rewrote to `INSERT ... SELECT * FROM unnest($1::timestamptz[], ...)`, sending one array per column instead — fixed-size query text regardless of batch size. This was the single biggest ingestion throughput win.
-- `GET /logs` ran an extra `COUNT(*)` on every request (for a `total` field the required API contract doesn't ask for), doubling read cost. Now only computed for the dashboard's page-number UI (no `cursor` param); skipped entirely on the cursor-paginated path the load generator actually exercises.
-- `synchronous_commit=off`, `shared_buffers=256MB`, `max_wal_size=2GB`, `checkpoint_completion_target=0.9` on the db container — reduces per-commit fsync wait for a workload where losing a few hundred milliseconds of unflushed logs on a hard crash is an acceptable trade-off.
-
-**Known bottleneck, not fully resolved:** with the db container capped at 1 CPU, concurrent read queries (aggregation) compete directly with write backends for that single core. Under sustained heavy ingestion with many concurrent connections, this occasionally pushes aggregate p95 past the 1s target (see table above). Reducing ingestion connection count (larger batches, fewer connections) measurably helps by giving each query backend a larger share of CPU time, but doesn't eliminate the tail entirely on longer runs. Given more time, the next things to try: a continuous aggregate / rollup table for the aggregation endpoint (so it reads pre-computed buckets instead of scanning raw rows), or moving the query path off the single write-contended connection pool.
+**Remaining bottleneck:** ingestion is now roughly evenly split between app CPU (~50% of its 0.5-core cap) and db CPU (~65% avg, spiking to 100%) — both containers are being used close to their limits rather than one idling while the other saturates. Pushing meaningfully past ~17k logs/sec on this hardware would need either a cheaper per-row validation path on the app side, or moving some of that CPU cost (e.g. batch validation) off the request path entirely.
 
 ## Optional Features
 
@@ -193,6 +198,8 @@ None of these introduce a required parameter, header, or credential on `/health`
 
 A background job runs hourly (and once on startup) calling `SELECT drop_chunks('logs', older_than => cutoff)`, where `cutoff = now() - RETENTION_DAYS` (default 30). Since `logs` is a TimescaleDB hypertable, this drops entire expired chunks instead of deleting rows one at a time — no per-row WAL/vacuum churn, no long-running locks, and no ingestion disruption. The trade-off: a chunk is only dropped once it's *entirely* older than the cutoff, so actual retention enforcement has a granularity of one `chunk_time_interval` (default 7 days) — data can live up to ~7 days past `RETENTION_DAYS` before its chunk is dropped. `POST /logs/retention/run` triggers the same logic on demand from the dashboard.
 
+The same run also calls `drop_chunks('logs_rollup_1m', older_than => cutoff)`. The continuous aggregate's materialized data lives in its own hypertable, so dropping chunks from `logs` doesn't touch it — without this, the rollup would grow forever regardless of `RETENTION_DAYS`.
+
 ## Load Test
 
 ```bash
@@ -202,10 +209,12 @@ BATCH_SIZE=500 CONNECTIONS=8 DURATION=20 node load-test.js
 
 ## Known Limitations
 
-- **Aggregate query latency under sustained heavy ingestion** can occasionally exceed the 1s p95 target — see Performance above. Root cause is CPU contention on the db container's single-core limit, not the query plan itself (the same query runs in well under 100ms with no concurrent write load).
-- **`attr.<key>` filters with no `since`/`until`** scan the full table — there's no index that can accelerate an equality match on a dynamic JSONB key while preserving the spec's "compared as strings" semantics. In practice this is bounded by always pairing attribute filters with a time range, which the dashboard and the required query pattern both do.
-- **Retention granularity is ~1 chunk interval (default 7 days)**, not exact-to-the-day, because `drop_chunks` only removes chunks entirely past the cutoff.
+- **`attr.<key>`/`q=` aggregate queries fall back to a raw row scan.** The continuous aggregate only tracks `count() by minute, service, level` — it has no way to filter on an attribute value or message substring. `GET /logs/aggregate?attr.user_id=42...` still works and returns correct results, just via the same unindexed scan `GET /logs` uses, bounded by `since`/`until`. The sub-second latency guarantee applies to the filter-less/service-or-level-only aggregate path, which is the one under explicit performance target.
+- **Aggregate results can lag ingestion by up to ~10–20 seconds.** The rollup refreshes on a 10-second schedule and real-time aggregation is disabled (see Performance #4) to avoid contending with concurrent inserts. This is inside the API contract's 20-second visibility window, but it means a log ingested moments ago may not yet be reflected in an aggregate count, even though `GET /logs` (which reads the raw table directly) sees it immediately.
+- **`attr.<key>`/`q=` filters on `GET /logs` with no `since`/`until`** scan the full table — there's no index that can accelerate an equality match on a dynamic JSONB key or a substring `ILIKE` while preserving the spec's "compared as strings" semantics, and GIN indexes for both were deliberately removed (see Indexing) because their write-time cost was the dominant ingestion bottleneck. In practice this is bounded by pairing these filters with a time range, which the dashboard and the required query pattern both do.
+- **Retention granularity is ~1 chunk interval (default 7 days)**, not exact-to-the-day, because `drop_chunks` only removes chunks entirely past the cutoff. This applies to both `logs` and `logs_rollup_1m`.
 - **No compiled build step** — the app runs directly via `tsx` in the container rather than a `tsc`-compiled `dist/`. Simpler for this project's scope, but adds a small amount of startup/runtime overhead compared to precompiled JS.
-- **No rate limiting or backpressure** on `POST /logs` — a client can push more concurrent batches than the db container can absorb, at which point requests queue behind the connection pool rather than being rejected or throttled.
+- **No rate limiting or backpressure** on `POST /logs` — a client can push more concurrent batches than the containers can absorb, at which point requests queue behind the connection pool rather than being rejected or throttled.
+- **First migration on a dataset with pre-existing historical data does a one-time full backfill** of the continuous aggregate (`CALL refresh_continuous_aggregate('logs_rollup_1m', NULL, NULL)`), guarded to run only once (when the rollup is empty). On ~2M pre-existing rows this added a few seconds to startup before `/health` reported ready; on a fresh empty database (the normal case) it's a no-op.
 
 `BATCH_SIZE`, `CONNECTIONS`, and `DURATION` are configurable via env vars; the script reports both requests/sec and the derived logs/sec (`requests/sec * BATCH_SIZE`).

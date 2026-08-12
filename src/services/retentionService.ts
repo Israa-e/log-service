@@ -18,6 +18,13 @@ export async function runRetention() {
     cutoff.toISOString(),
   ]);
 
+  // logs_rollup_1m is a separate hypertable (the continuous aggregate's materialized
+  // storage) — dropping chunks from `logs` doesn't touch it, so without this it would
+  // grow unbounded regardless of RETENTION_DAYS.
+  await pool.query(`SELECT drop_chunks('logs_rollup_1m', older_than => $1::timestamptz)`, [
+    cutoff.toISOString(),
+  ]);
+
   if (totalDeleted > 0) {
     createNotification("retention", "Retention Run Complete", `Deleted ${totalDeleted} logs older than ${RETENTION_DAYS} days`);
     console.log(`Retention: dropped chunks containing ~${totalDeleted} old logs`);

@@ -1,4 +1,4 @@
-import { pool } from "../db/index.js";
+import { pool, queryPool } from "../db/index.js";
 
 const VALID_LEVELS = ["debug", "info", "warn", "error"];
 
@@ -225,7 +225,7 @@ export async function queryLogs(query: any) {
     const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";
     const querySql = `SELECT * FROM logs ${whereClause} ORDER BY timestamp DESC, id DESC LIMIT ${limit}`;
 
-    const result = await pool.query(querySql, values);
+    const result = await queryPool.query(querySql, values);
 
     const total = null;
 
@@ -277,7 +277,17 @@ export async function queryAggregate(query: any) {
         throw new Error(`invalid level: '${level}'`);
     }
 
-    const conditions: string[] = [`timestamp >= $1`, `timestamp < $2`];
+    const attrFilters = Object.keys(query).filter((key) => key.startsWith("attr."));
+    const groupColumn = group_by === "service" ? "service" : group_by === "level" ? "level" : null;
+    const selectGroup = groupColumn ? `${groupColumn} AS group_value` : `NULL AS group_value`;
+
+    // attr.<key> and q filters aren't tracked by the rollup (it only retains service/level/
+    // count per minute), so those queries fall back to scanning raw rows. Everything else —
+    // the primary aggregation path — reads pre-aggregated per-minute counts instead, so
+    // latency stays flat regardless of how many raw rows fall in the queried range.
+    const useRollup = attrFilters.length === 0 && !q;
+
+    const conditions: string[] = [`bucket_start >= $1`, `bucket_start < $2`];
     const values: any[] = [sinceDate.toISOString(), untilDate.toISOString()];
     let paramIndex = 3;
 
@@ -293,44 +303,57 @@ export async function queryAggregate(query: any) {
         paramIndex++;
     }
 
-    if (q) {
-        conditions.push(`message ILIKE $${paramIndex}`);
-        values.push(`%${q}%`);
-        paramIndex++;
-    }
+    let sql: string;
 
-    for (const key in query) {
-        if (key.startsWith("attr.")) {
+    if (useRollup) {
+        const whereClause = conditions.join(" AND ");
+        const groupByClause = groupColumn ? `GROUP BY bucket, ${groupColumn}` : `GROUP BY bucket`;
+        sql = `
+      SELECT
+        time_bucket('${bucketInterval}', bucket_start) AS bucket,
+        ${selectGroup},
+        SUM(count) AS count
+      FROM logs_rollup_1m
+      WHERE ${whereClause}
+      ${groupByClause}
+      ORDER BY bucket ASC
+    `;
+    } else {
+        // raw-scan fallback for attr.*/q filtered aggregate queries
+        conditions[0] = `timestamp >= $1`;
+        conditions[1] = `timestamp < $2`;
+
+        if (q) {
+            conditions.push(`message ILIKE $${paramIndex}`);
+            values.push(`%${q}%`);
+            paramIndex++;
+        }
+
+        for (const key of attrFilters) {
             const attrKey = key.slice(5);
             conditions.push(`attributes @> $${paramIndex}::jsonb`);
             values.push(JSON.stringify({ [attrKey]: String(query[key]) }));
             paramIndex += 1;
         }
+
+        const whereClause = conditions.join(" AND ");
+        const groupByClause = groupColumn ? `GROUP BY bucket, ${groupColumn}` : `GROUP BY bucket`;
+        sql = `
+      SELECT
+        time_bucket('${bucketInterval}', timestamp) AS bucket,
+        ${selectGroup},
+        COUNT(*) AS count
+      FROM logs
+      WHERE ${whereClause}
+      ${groupByClause}
+      ORDER BY bucket ASC
+    `;
     }
 
-    const whereClause = conditions.join(" AND ");
-    const groupColumn = group_by === "service" ? "service" : group_by === "level" ? "level" : null;
-
-    const selectGroup = groupColumn ? `${groupColumn} AS group_value` : `NULL AS group_value`;
-    const groupByClause = groupColumn
-        ? `GROUP BY bucket_start, ${groupColumn}`
-        : `GROUP BY bucket_start`;
-
-    const sql = `
-    SELECT
-      time_bucket('${bucketInterval}', timestamp) AS bucket_start,
-      ${selectGroup},
-      COUNT(*) AS count
-    FROM logs
-    WHERE ${whereClause}
-    ${groupByClause}
-    ORDER BY bucket_start ASC
-  `;
-
-    const result = await pool.query(sql, values);
+    const result = await queryPool.query(sql, values);
 
     const buckets = result.rows.map((row) => ({
-        start: row.bucket_start,
+        start: row.bucket,
         group: row.group_value,
         count: parseInt(row.count, 10),
     }));

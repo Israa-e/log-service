@@ -16,14 +16,16 @@ import { fileURLToPath } from "url";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: "20mb" }));
-app.use(
-    session({
-        secret: process.env.SESSION_SECRET || "dev-secret-change-me",
-        resave: false,
-        saveUninitialized: false,
-        cookie: { maxAge: 24 * 60 * 60 * 1000 },
-    })
-);
+
+// Session middleware touches the cookie store on every request it runs on, so it's
+// scoped to the dashboard/auth pages instead of applied globally — the ingestion and
+// query endpoints are CPU-constrained and never need a session.
+const sessionMiddleware = session({
+    secret: process.env.SESSION_SECRET || "dev-secret-change-me",
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 },
+});
 
 const PUBLIC = path.join(process.cwd(), "public");
 const authPage = (file: string) => (req: any, res: any) => {
@@ -32,12 +34,12 @@ const authPage = (file: string) => (req: any, res: any) => {
 app.get("/login.html", (req, res) => res.sendFile(path.join(PUBLIC, "login.html")));
 app.get("/", (req, res) => res.redirect("/logs-explorer"));
 app.get("/dashboard", (req, res) => res.redirect("/logs-explorer"));
-app.get("/logs-explorer", checkAuth, authPage("logs-explorer.html"));
-app.get("/analytics", checkAuth, authPage("analytics.html"));
-app.get("/ingestion", checkAuth, authPage("ingestion.html"));
-app.get("/retention", checkAuth, authPage("retention.html"));
-app.get("/history", checkAuth, authPage("retention.html"));
-app.get("/users", checkAuth, authPage("users.html"));
+app.get("/logs-explorer", sessionMiddleware, checkAuth, authPage("logs-explorer.html"));
+app.get("/analytics", sessionMiddleware, checkAuth, authPage("analytics.html"));
+app.get("/ingestion", sessionMiddleware, checkAuth, authPage("ingestion.html"));
+app.get("/retention", sessionMiddleware, checkAuth, authPage("retention.html"));
+app.get("/history", sessionMiddleware, checkAuth, authPage("retention.html"));
+app.get("/users", sessionMiddleware, checkAuth, authPage("users.html"));
 app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
 app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
 app.use(express.static(PUBLIC));
@@ -45,7 +47,7 @@ setupSwagger(app);
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
-app.use("/auth", authRouter);
+app.use("/auth", sessionMiddleware, authRouter);
 app.use("/notifications", notificationsRouter);
 app.use("/support", supportRouter);
 
