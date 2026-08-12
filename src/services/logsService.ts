@@ -34,6 +34,20 @@ export function decodeCursor(cursor: string): { timestamp: string; id: number } 
     return decoded;
 }
 
+function normalizeAttributes(attributes: Record<string, string | number | boolean>) {
+    const normalized: Record<string, string> = {};
+    for (const [key, value] of Object.entries(attributes)) {
+        if (value === null || value === undefined) {
+            throw new Error(`invalid attribute value for '${key}'`);
+        }
+        if (typeof value === "object") {
+            throw new Error(`nested object in attribute '${key}'`);
+        }
+        normalized[key] = String(value);
+    }
+    return normalized;
+}
+
 export function validateLogEntry(log: LogEntry, now: number = Date.now()): ValidationResult {
     if (typeof log !== "object" || log === null || Array.isArray(log)) {
         return { valid: false, reason: "entry must be an object" };
@@ -66,26 +80,21 @@ export function validateLogEntry(log: LogEntry, now: number = Date.now()): Valid
         return { valid: false, reason: "message is required" };
     }
 
+    let normalizedAttributes: string | null = null;
     if (log.attributes != null) {
         if (typeof log.attributes !== "object" || Array.isArray(log.attributes)) {
             return { valid: false, reason: "attributes must be a flat object" };
         }
-        for (const [k, v] of Object.entries(log.attributes)) {
-            if (v != null && typeof v === "object") {
-                return { valid: false, reason: `nested object in attribute '${k}'` };
-            }
+        try {
+            normalizedAttributes = JSON.stringify(normalizeAttributes(log.attributes));
+        } catch (error: any) {
+            return { valid: false, reason: error.message };
         }
     }
 
     return {
         valid: true,
-        row: [
-            ts,
-            log.level,
-            log.service,
-            log.message,
-            log.attributes ? JSON.stringify(log.attributes) : null,
-        ],
+        row: [ts, log.level, log.service, log.message, normalizedAttributes],
     };
 }
 
@@ -200,9 +209,9 @@ export async function queryLogs(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
-            conditions.push(`attributes ->> $${paramIndex} = $${paramIndex + 1}`);
-            values.push(attrKey, query[key]);
-            paramIndex += 2;
+            conditions.push(`attributes @> $${paramIndex}::jsonb`);
+            values.push(JSON.stringify({ [attrKey]: String(query[key]) }));
+            paramIndex += 1;
         }
     }
 
@@ -293,9 +302,9 @@ export async function queryAggregate(query: any) {
     for (const key in query) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
-            conditions.push(`attributes ->> $${paramIndex} = $${paramIndex + 1}`);
-            values.push(attrKey, query[key]);
-            paramIndex += 2;
+            conditions.push(`attributes @> $${paramIndex}::jsonb`);
+            values.push(JSON.stringify({ [attrKey]: String(query[key]) }));
+            paramIndex += 1;
         }
     }
 
