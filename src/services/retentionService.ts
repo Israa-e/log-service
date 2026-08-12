@@ -18,10 +18,12 @@ export async function runRetention() {
     cutoff.toISOString(),
   ]);
 
-  // logs_rollup_1m is a separate hypertable (the continuous aggregate's materialized
-  // storage) — dropping chunks from `logs` doesn't touch it, so without this it would
-  // grow unbounded regardless of RETENTION_DAYS.
-  await pool.query(`SELECT drop_chunks('logs_rollup_1m', older_than => $1::timestamptz)`, [
+  // logs_rollup_1m is a plain table (not a hypertable), so it has no chunks to drop —
+  // dropping chunks from `logs` doesn't touch it, so without this it would grow
+  // unbounded regardless of RETENTION_DAYS. Row count here is bounded by
+  // minutes * distinct(service, level) combinations, not raw log volume, so a plain
+  // DELETE is cheap even without chunk-based dropping.
+  await pool.query(`DELETE FROM logs_rollup_1m WHERE bucket_start < $1`, [
     cutoff.toISOString(),
   ]);
 

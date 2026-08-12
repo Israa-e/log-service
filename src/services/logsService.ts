@@ -16,7 +16,7 @@ interface InsertResult {
 }
 
 type ValidationResult =
-  | { valid: true; row: (string | null)[] }
+  | { valid: true; row: (string | null)[]; epochMs: number }
   | { valid: false; reason: string };
 
 export function decodeCursor(cursor: string): { timestamp: string; id: number } {
@@ -95,7 +95,72 @@ export function validateLogEntry(log: LogEntry, now: number = Date.now()): Valid
     return {
         valid: true,
         row: [ts, log.level, log.service, log.message, normalizedAttributes],
+        epochMs: time.getTime(),
     };
+}
+
+const MINUTE_MS = 60 * 1000;
+
+// In-memory accumulator for GET /logs/aggregate's rollup, drained by flushRollup() on a
+// timer (see startRollupFlusher). Nested Maps avoid building/parsing a string key per
+// row — cheap enough to run inline on the request path — while the actual DB write
+// happens in bulk, off that path, at a bounded rate regardless of ingestion volume.
+let pendingRollup = new Map<number, Map<string, Map<string, number>>>();
+
+function accumulateRollup(bucketMs: number, service: string, level: string, delta: number): void {
+    let byService = pendingRollup.get(bucketMs);
+    if (!byService) {
+        byService = new Map();
+        pendingRollup.set(bucketMs, byService);
+    }
+    let byLevel = byService.get(service);
+    if (!byLevel) {
+        byLevel = new Map();
+        byService.set(service, byLevel);
+    }
+    byLevel.set(level, (byLevel.get(level) ?? 0) + delta);
+}
+
+export async function flushRollup(): Promise<void> {
+    if (pendingRollup.size === 0) return;
+
+    // Swap out the accumulator before the first await so concurrent requests keep
+    // accumulating into a fresh map while this flush writes the snapshot — no data is
+    // dropped or double-counted across the swap.
+    const snapshot = pendingRollup;
+    pendingRollup = new Map();
+
+    const buckets: string[] = [];
+    const services: string[] = [];
+    const levels: string[] = [];
+    const counts: number[] = [];
+    for (const [bucketMs, byService] of snapshot) {
+        const bucketStart = new Date(bucketMs).toISOString();
+        for (const [service, byLevel] of byService) {
+            for (const [level, count] of byLevel) {
+                buckets.push(bucketStart);
+                services.push(service);
+                levels.push(level);
+                counts.push(count);
+            }
+        }
+    }
+
+    try {
+        await pool.query(
+            `INSERT INTO logs_rollup_1m (bucket_start, service, level, count)
+             SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::bigint[])`,
+            [buckets, services, levels, counts]
+        );
+    } catch (err) {
+        console.error("Rollup flush failed:", err);
+    }
+}
+
+export function startRollupFlusher(intervalMs: number = 1000): NodeJS.Timeout {
+    return setInterval(() => {
+        flushRollup().catch((err) => console.error("Rollup flush error:", err));
+    }, intervalMs);
 }
 
 export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
@@ -105,6 +170,7 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
 
     const rejected: { index: number; reason: string }[] = [];
     const validRows: (string | null)[][] = [];
+    const epochMsList: number[] = [];
     const now = Date.now();
 
     for (let index = 0; index < logs.length; index++) {
@@ -115,6 +181,7 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
             continue;
         }
         validRows.push(result.row);
+        epochMsList.push(result.epochMs);
     }
 
     if (validRows.length > 0) {
@@ -132,6 +199,16 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
              SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::jsonb[])`,
             [timestamps, levels, services, messages, attributes]
         );
+
+        // Rollup deltas for GET /logs/aggregate's fast path are grouped here but not
+        // written yet — see accumulateRollup/flushRollup below. Writing them on every
+        // request added enough per-request DB round-trip cost to meaningfully cut
+        // ingestion throughput; batching them in memory and flushing on a timer keeps
+        // that cost off the request path entirely.
+        for (let i = 0; i < validRows.length; i++) {
+            const bucketMs = epochMsList[i]! - (epochMsList[i]! % MINUTE_MS);
+            accumulateRollup(bucketMs, services[i] as string, levels[i] as string, 1);
+        }
     }
 
     return { accepted: validRows.length, rejected };
