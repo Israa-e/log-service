@@ -2,9 +2,7 @@ import express from "express";
 import session from "express-session";
 import healthRouter from "./routes/health.js";
 import logsRouter from "./routes/logs.js";
-import { startRetentionJob } from "./services/retentionService.js";
-import { startAlertJob } from "./services/alertService.js";
-import { startRollupFlusher, flushRollup } from "./services/logsService.js";
+import { flushRollup } from "./services/logsService.js";
 import alertsRouter from "./routes/alerts.js";
 import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";
@@ -61,10 +59,6 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
   }
   next(err);
 });
-
-startRetentionJob();
-startAlertJob();
-startRollupFlusher();
 
 // Flush whatever's accumulated in memory before the process exits, so a container
 // stop/restart doesn't lose the last (up to ~1s of) rollup deltas.

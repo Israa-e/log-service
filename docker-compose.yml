@@ -26,7 +26,7 @@ services:
     ports:
       - "5433:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      - tsdb_pgdata:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -U loguser -d logdb" ]
       interval: 5s
@@ -46,4 +46,8 @@ services:
       - checkpoint_completion_target=0.9
 
 volumes:
-  pgdata:
+  # Renamed from `pgdata` when the db image moved from postgres:16 to timescaledb: Postgres
+  # only sets shared_preload_libraries during initdb, so any host still holding the old
+  # `pgdata` volume would reuse a data directory without timescaledb preloaded, and
+  # CREATE EXTENSION timescaledb would fail on every startup ("must be preloaded").
+  tsdb_pgdata:

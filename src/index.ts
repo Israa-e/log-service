@@ -1,6 +1,9 @@
 import app from "./app.js";
 import { pool } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
+import { startRetentionJob } from "./services/retentionService.js";
+import { startAlertJob } from "./services/alertService.js";
+import { startRollupFlusher } from "./services/logsService.js";
 
 const PORT = 8080;
 
@@ -19,6 +22,9 @@ async function waitForDb(): Promise<void> {
 async function start(): Promise<void> {
   await waitForDb();
   await migrate();
+  startRetentionJob();
+  startAlertJob();
+  startRollupFlusher();
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
   });
