@@ -1,4 +1,4 @@
-import { pool, queryPool } from "../db/index.js";
+import { pool, queryPool, rollupPool } from "../db/index.js";
 
 const VALID_LEVELS = ["debug", "info", "warn", "error"];
 
@@ -147,7 +147,7 @@ export async function flushRollup(): Promise<void> {
     }
 
     try {
-        await pool.query(
+        await rollupPool.query(
             `INSERT INTO logs_rollup_1m (bucket_start, service, level, count)
              SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::bigint[])`,
             [buckets, services, levels, counts]

@@ -1,0 +1,389 @@
+<!doctype html>
+<title>Load Generator Report — Custom</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page-plane:     #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --gridline:       #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --series-1:       #2a78d6;
+    --series-1-wash:  rgba(42,120,214,0.10);
+    --status-good:      #0ca30c;
+    --status-critical:  #d03b3b;
+    --status-good-bg:     rgba(12,163,12,0.10);
+    --status-critical-bg: rgba(208,59,59,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page-plane:     #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --gridline:       #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --series-1:       #3987e5;
+      --series-1-wash:  rgba(57,135,229,0.14);
+      --status-good:      #0ca30c;
+      --status-critical:  #e66767;
+      --status-good-bg:     rgba(12,163,12,0.14);
+      --status-critical-bg: rgba(230,103,103,0.14);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  .viz-root { padding: 32px 24px 64px; max-width: 980px; margin: 0 auto; }
+  header h1 { font-size: 22px; margin: 0 0 4px; }
+  header .subtitle { color: var(--text-secondary); margin: 0 0 2px; }
+  header .meta { color: var(--text-muted); font-size: 13px; margin: 0 0 24px; }
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 20px;
+  }
+  .card h2 { font-size: 15px; margin: 0 0 14px; }
+  .tile-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 14px;
+  }
+  .tile { padding: 4px 0; }
+  .tile-label { color: var(--text-secondary); font-size: 12px; margin-bottom: 4px; }
+  .tile-value { font-size: 22px; font-weight: 600; }
+  .tile-sub { color: var(--text-muted); font-size: 12px; margin-top: 2px; }
+  .legend { display: flex; gap: 18px; margin-bottom: 8px; font-size: 13px; color: var(--text-secondary); }
+  .legend-item { display: flex; align-items: center; gap: 6px; }
+  .legend-swatch { width: 18px; height: 0; display: inline-block; border-top: 2px solid var(--series-1); }
+  .legend-swatch.swatch-dashed { border-top: 2px dashed var(--text-muted); }
+  .chart-wrap { position: relative; }
+  .chart-svg { width: 100%; height: auto; display: block; overflow: visible; }
+  .gridline { stroke: var(--gridline); stroke-width: 1; }
+  .axis-label { fill: var(--text-muted); font-size: 11px; }
+  .stage-marker { stroke: var(--baseline); stroke-width: 1; stroke-dasharray: 3 3; }
+  .stage-label { fill: var(--text-secondary); font-size: 11px; }
+  .area { fill: var(--series-1-wash); stroke: none; }
+  .line-achieved { fill: none; stroke: var(--series-1); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+  .line-target { fill: none; stroke: var(--text-muted); stroke-width: 2; stroke-dasharray: 6 4; stroke-linejoin: round; stroke-linecap: round; }
+  .crosshair { stroke: var(--baseline); stroke-width: 1; }
+  .hover-dot { fill: var(--series-1); stroke: var(--surface-1); stroke-width: 2; }
+  .tooltip {
+    position: absolute;
+    pointer-events: none;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 12px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    transform: translate(-50%, -110%);
+    white-space: nowrap;
+  }
+  .tooltip .t-time { color: var(--text-muted); margin-bottom: 4px; }
+  .tooltip .t-row { display: flex; align-items: center; gap: 6px; }
+  .tooltip .t-key { width: 12px; height: 0; border-top: 2px solid var(--series-1); display: inline-block; }
+  .tooltip .t-key.dashed { border-top: 2px dashed var(--text-muted); }
+  .tooltip .t-value { font-weight: 600; }
+  .tooltip .t-name { color: var(--text-secondary); }
+  .table-toggle { margin-top: 10px; }
+  .table-toggle summary { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+  .table-scroll { overflow-x: auto; margin-top: 10px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; }
+  th, td { text-align: right; padding: 4px 10px; font-variant-numeric: tabular-nums; }
+  th:first-child, td:first-child { text-align: left; }
+  thead th { color: var(--text-muted); border-bottom: 1px solid var(--gridline); font-weight: 500; }
+  tbody tr:nth-child(odd) { background: rgba(128,128,128,0.04); }
+  .status-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: 14px;
+    margin-bottom: 12px;
+  }
+  .status-badge.status-good { background: var(--status-good-bg); color: var(--status-good); }
+  .status-badge.status-critical { background: var(--status-critical-bg); color: var(--status-critical); }
+  .status-dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+  .muted-note { color: var(--text-muted); font-size: 12px; margin: 8px 0 0; }
+  code { font-size: 12px; background: rgba(128,128,128,0.12); padding: 1px 5px; border-radius: 4px; }
+</style>
+<div class="viz-root">
+  <header>
+    <h1>Custom scenario</h1>
+    <p class="subtitle">Ad-hoc single-stage run. &mdash; 15,000/s for 25s</p>
+    <p class="meta">http://localhost:8080 &middot; batch size 500 &middot; 32 max concurrent requests &middot; ran 28.7s &middot; generated 2026-08-14T03:08:40.641Z</p>
+  </header>
+
+  
+  <section class="card">
+    <h2>Throughput — achieved vs. target</h2>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-swatch swatch-line"></span>Achieved</span>
+      <span class="legend-item"><span class="legend-swatch swatch-dashed"></span>Target</span>
+    </div>
+    <div class="chart-wrap">
+      <svg viewBox="0 0 920 340" class="chart-svg" id="throughput-chart" role="img" aria-label="Achieved versus target throughput over time">
+        <line class="gridline" x1="68" x2="900" y1="300.0" y2="300.0"/><line class="gridline" x1="68" x2="900" y1="206.7" y2="206.7"/><line class="gridline" x1="68" x2="900" y1="113.3" y2="113.3"/><line class="gridline" x1="68" x2="900" y1="20.0" y2="20.0"/>
+        <path class="area" d="M137.3,195.5 L276.0,79.7 L414.7,104.0 L553.3,87.2 L692.0,102.1 L830.7,161.9 L830.7,300 L137.3,300 Z"/>
+        <path class="line-target" d="M137.3,20.0 L276.0,20.0 L414.7,20.0 L553.3,20.0 L692.0,20.0 L830.7,20.0"/>
+        <path class="line-achieved" d="M137.3,195.5 L276.0,79.7 L414.7,104.0 L553.3,87.2 L692.0,102.1 L830.7,161.9"/>
+        
+        <line class="stage-marker" x1="133.5" x2="133.5" y1="20" y2="300"/>
+        <text class="stage-label" x="133.5" y="14" text-anchor="middle">15,000/s</text>
+        <line id="crosshair" class="crosshair" x1="0" x2="0" y1="20" y2="300" visibility="hidden"/>
+        <circle id="hover-dot" class="hover-dot" r="4" visibility="hidden"/>
+        <text class="axis-label" x="58" y="300.0" text-anchor="end" dominant-baseline="middle">0</text><text class="axis-label" x="58" y="206.7" text-anchor="end" dominant-baseline="middle">5,000</text><text class="axis-label" x="58" y="113.3" text-anchor="end" dominant-baseline="middle">10,000</text><text class="axis-label" x="58" y="20.0" text-anchor="end" dominant-baseline="middle">15,000</text>
+        <text class="axis-label" x="68.0" y="320" text-anchor="middle">0:00</text><text class="axis-label" x="345.3" y="320" text-anchor="middle">0:10</text><text class="axis-label" x="622.7" y="320" text-anchor="middle">0:20</text><text class="axis-label" x="900.0" y="320" text-anchor="middle">0:30</text>
+        <rect id="hit-area" x="68" y="20" width="832" height="280" fill="transparent"/>
+      </svg>
+      <div id="tooltip" class="tooltip" hidden></div>
+    </div>
+    <details class="table-toggle">
+      <summary>View as table</summary>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Elapsed</th><th>Achieved (logs/s)</th><th>Target (logs/s)</th></tr></thead>
+          <tbody><tr><td>0:03</td><td>5,600</td><td>15,000</td></tr><tr><td>0:08</td><td>11,800</td><td>15,000</td></tr><tr><td>0:13</td><td>10,500</td><td>15,000</td></tr><tr><td>0:18</td><td>11,400</td><td>15,000</td></tr><tr><td>0:23</td><td>10,600</td><td>15,000</td></tr><tr><td>0:28</td><td>7,400</td><td>15,000</td></tr></tbody>
+        </table>
+      </div>
+    </details>
+    <script type="application/json" id="throughput-data">{"yMax":15000,"points":[{"t":2.5,"a":5600,"g":15000},{"t":7.5,"a":11800,"g":15000},{"t":12.5,"a":10500,"g":15000},{"t":17.5,"a":11400,"g":15000},{"t":22.5,"a":10600,"g":15000},{"t":27.5,"a":7400,"g":15000}]}</script>
+  </section>
+
+  <section class="card">
+    <h2>Throughput</h2>
+    <div class="tile-grid">
+      
+    <div class="tile">
+      <div class="tile-label">HTTP requests</div>
+      <div class="tile-value">573</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Accepted logs</div>
+      <div class="tile-value">286,500</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Rejected logs</div>
+      <div class="tile-value">0</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Achieved rate</div>
+      <div class="tile-value">9,979 logs/s</div>
+      
+    </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Latency &amp; requests</h2>
+    <div class="tile-grid">
+      
+    <div class="tile">
+      <div class="tile-label">POST /logs p50</div>
+      <div class="tile-value">1389 ms</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">POST /logs p95</div>
+      <div class="tile-value">1831 ms</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">POST /logs p99</div>
+      <div class="tile-value">2062 ms</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">GET /logs/aggregate p95</div>
+      <div class="tile-value">1701 ms</div>
+      <div class="tile-sub">13 probes</div>
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Success rate</div>
+      <div class="tile-value">100.00%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Error rate</div>
+      <div class="tile-value">0.00%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Status code range</div>
+      <div class="tile-value">200–200</div>
+      
+    </div>
+    </div>
+  </section>
+
+  
+  <section class="card">
+    <h2>Resources</h2>
+    <div class="tile-grid">
+      
+    <div class="tile">
+      <div class="tile-label">App CPU (max)</div>
+      <div class="tile-value">51.3%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">App CPU (avg)</div>
+      <div class="tile-value">38.3%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">App memory (max)</div>
+      <div class="tile-value">86.2 MiB</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">App memory (avg)</div>
+      <div class="tile-value">83.0 MiB</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Postgres CPU (max)</div>
+      <div class="tile-value">104.6%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Postgres CPU (avg)</div>
+      <div class="tile-value">84.6%</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Postgres memory (max)</div>
+      <div class="tile-value">135.0 MiB</div>
+      
+    </div>
+      
+    <div class="tile">
+      <div class="tile-label">Postgres memory (avg)</div>
+      <div class="tile-value">107.1 MiB</div>
+      
+    </div>
+    </div>
+    <p class="muted-note">Sampled every 2s via <code>docker stats --no-stream</code>. CPU% is scaled by the host's core count rather than the container's <code>cpus:</code> limit on some Docker versions, so a spike briefly above 100% for a 1-CPU-capped container reflects that scaling quirk, not literal over-provisioning.</p>
+  </section>
+
+  
+
+  <script>
+  (function () {
+    const dataEl = document.getElementById("throughput-data");
+    if (!dataEl) return;
+    const parsed = JSON.parse(dataEl.textContent);
+    const data = parsed.points;
+    const yMax = parsed.yMax;
+    const svg = document.getElementById("throughput-chart");
+    const hitArea = document.getElementById("hit-area");
+    const crosshair = document.getElementById("crosshair");
+    const hoverDot = document.getElementById("hover-dot");
+    const tooltip = document.getElementById("tooltip");
+    if (!data.length) return;
+
+    const hitBox = hitArea.getBBox();
+    const xMax = data[data.length - 1].t + 2.5;
+
+    function pointToSvg(evt) {
+      const rect = svg.getBoundingClientRect();
+      const scaleX = svg.viewBox.baseVal.width / rect.width;
+      const scaleY = svg.viewBox.baseVal.height / rect.height;
+      return { x: (evt.clientX - rect.left) * scaleX, y: (evt.clientY - rect.top) * scaleY };
+    }
+
+    function mmss(totalSeconds) {
+      const s = Math.max(0, Math.round(totalSeconds));
+      const m = Math.floor(s / 60);
+      const r = s % 60;
+      return m + ":" + String(r).padStart(2, "0");
+    }
+
+    hitArea.addEventListener("pointermove", (evt) => {
+      const p = pointToSvg(evt);
+      const frac = Math.min(1, Math.max(0, (p.x - hitBox.x) / hitBox.width));
+      const idx = Math.round(frac * (data.length - 1));
+      const point = data[idx];
+      const x = hitBox.x + (point.t / xMax) * hitBox.width;
+
+      crosshair.setAttribute("x1", x);
+      crosshair.setAttribute("x2", x);
+      crosshair.setAttribute("visibility", "visible");
+
+      hoverDot.setAttribute("visibility", "visible");
+      hoverDot.setAttribute("cx", x);
+      hoverDot.setAttribute("cy", hitBox.y + hitBox.height - (point.a / yMax) * hitBox.height);
+
+      tooltip.hidden = false;
+      const rect = svg.getBoundingClientRect();
+      const px = rect.left + (x / svg.viewBox.baseVal.width) * rect.width - svg.parentElement.getBoundingClientRect().left;
+      const py = rect.top + (hitBox.y / svg.viewBox.baseVal.height) * rect.height - svg.parentElement.getBoundingClientRect().top;
+      tooltip.style.left = px + "px";
+      tooltip.style.top = py + "px";
+      tooltip.replaceChildren();
+      const timeEl = document.createElement("div");
+      timeEl.className = "t-time";
+      timeEl.textContent = "t = " + mmss(point.t);
+      const row1 = document.createElement("div");
+      row1.className = "t-row";
+      const key1 = document.createElement("span");
+      key1.className = "t-key";
+      const val1 = document.createElement("span");
+      val1.className = "t-value";
+      val1.textContent = point.a.toLocaleString();
+      const name1 = document.createElement("span");
+      name1.className = "t-name";
+      name1.textContent = "achieved";
+      row1.append(key1, val1, name1);
+      const row2 = document.createElement("div");
+      row2.className = "t-row";
+      const key2 = document.createElement("span");
+      key2.className = "t-key dashed";
+      const val2 = document.createElement("span");
+      val2.className = "t-value";
+      val2.textContent = point.g.toLocaleString();
+      const name2 = document.createElement("span");
+      name2.className = "t-name";
+      name2.textContent = "target";
+      row2.append(key2, val2, name2);
+      tooltip.append(timeEl, row1, row2);
+    });
+
+    hitArea.addEventListener("pointerleave", () => {
+      crosshair.setAttribute("visibility", "hidden");
+      hoverDot.setAttribute("visibility", "hidden");
+      tooltip.hidden = true;
+    });
+  })();
+  </script>
+</div>

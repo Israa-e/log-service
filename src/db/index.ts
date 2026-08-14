@@ -15,3 +15,9 @@ const connectionConfig = {
 // instead of waiting in that line, even while ingestion saturates the write pool.
 export const pool = new Pool({ ...connectionConfig, max: 10 });
 export const queryPool = new Pool({ ...connectionConfig, max: 4 });
+
+// Rollup flushes must land on a schedule regardless of how busy ingestion is — sharing
+// `pool` let them queue behind saturated ingest traffic under load, delaying aggregate
+// visibility well past the eventual-consistency window. A dedicated connection keeps
+// flushes off that queue.
+export const rollupPool = new Pool({ ...connectionConfig, max: 2 });
