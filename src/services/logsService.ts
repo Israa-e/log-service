@@ -169,8 +169,19 @@ export async function flushRollup(): Promise<void> {
 }
 
 export function startRollupFlusher(intervalMs: number = 1000): NodeJS.Timeout {
+    // setInterval doesn't wait for the callback to finish, so under load — where a flush can
+    // take longer than intervalMs because rollupPool (2 connections) is contended — ticks
+    // would otherwise pile up faster than they drain, each queuing indefinitely for a
+    // connection. The in-flight guard skips a tick while one is still running instead of
+    // stacking more attempts on top of it; the next tick that finds it free flushes
+    // everything accumulated since, so nothing is lost, just coalesced.
+    let inFlight = false;
     return setInterval(() => {
-        flushRollup().catch((err) => console.error("Rollup flush error:", err));
+        if (inFlight) return;
+        inFlight = true;
+        flushRollup()
+            .catch((err) => console.error("Rollup flush error:", err))
+            .finally(() => { inFlight = false; });
     }, intervalMs);
 }
 
