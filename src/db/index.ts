@@ -21,7 +21,7 @@ export const pool = new Pool({ ...connectionConfig, max: 10 });
 // read behind them, including cheap rollup-backed aggregate calls, until the client times
 // out. A statement_timeout bounds that: a pathological query fails fast and frees its
 // connection instead of jamming the whole pool.
-export const queryPool = new Pool({ ...connectionConfig, max: 4, statement_timeout: 5000 });
+export const queryPool = new Pool({ ...connectionConfig, max: 4, statement_timeout: 8000 });
 
 // Rollup flushes must land on a schedule regardless of how busy ingestion is — sharing
 // `pool` let them queue behind saturated ingest traffic under load, delaying aggregate
@@ -29,4 +29,4 @@ export const queryPool = new Pool({ ...connectionConfig, max: 4, statement_timeo
 // flushes off that queue. statement_timeout keeps a stuck flush from occupying one of only
 // 2 connections indefinitely — it errors out quickly and flushRollup re-queues the batch
 // for the next tick instead of leaving it stalled.
-export const rollupPool = new Pool({ ...connectionConfig, max: 2, statement_timeout: 3000 });
+export const rollupPool = new Pool({ ...connectionConfig, max: 2, statement_timeout: 5000 });
