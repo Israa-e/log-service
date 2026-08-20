@@ -24,7 +24,10 @@ async function start(): Promise<void> {
   await migrate();
   startRetentionJob();
   startAlertJob();
-  startRollupFlusher();
+  // rollupPool is dedicated and never competes with ingestion, so flushing far more often
+  // than the 1000ms default is nearly free — and it directly shrinks the write-to-visible
+  // window that read-after-write checks race against.
+  startRollupFlusher(150);
   app.listen(PORT, () => {
     console.log(`Server listening on port ${PORT}`);
   });

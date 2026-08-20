@@ -153,7 +153,18 @@ export async function flushRollup(): Promise<void> {
             [buckets, services, levels, counts]
         );
     } catch (err) {
-        console.error("Rollup flush failed:", err);
+        console.error("Rollup flush failed, re-queuing for retry:", err);
+        // The snapshot was already swapped out of pendingRollup before this query ran, so on
+        // failure it must be merged back in (not just re-assigned) — pendingRollup may already
+        // have new deltas accumulated from requests since the swap. Without this, a single
+        // failed flush (e.g. rollupPool contention under load) permanently drops those counts.
+        for (const [bucketMs, byService] of snapshot) {
+            for (const [service, byLevel] of byService) {
+                for (const [level, count] of byLevel) {
+                    accumulateRollup(bucketMs, service, level, count);
+                }
+            }
+        }
     }
 }
 

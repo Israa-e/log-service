@@ -61,5 +61,12 @@ CREATE TABLE IF NOT EXISTS logs_rollup_1m (
 
 CREATE INDEX IF NOT EXISTS idx_logs_rollup_bucket ON logs_rollup_1m (bucket_start);
 
+-- GET /logs/aggregate's rollup path always filters on bucket_start, but callers scoped to
+-- one service (e.g. an eventual-consistency check polling for a specific benchmark run's
+-- rows) only need that service's slice. Without this, that lookup scans/filters every
+-- service's rollup rows in the bucket range — increasingly expensive as the table
+-- accumulates rows across a long-running instance — instead of a targeted index lookup.
+CREATE INDEX IF NOT EXISTS idx_logs_rollup_service_bucket ON logs_rollup_1m (service, bucket_start);
+
 CREATE EXTENSION IF NOT EXISTS timescaledb;
 SELECT create_hypertable('logs', 'timestamp', if_not_exists => TRUE, migrate_data => TRUE);
