@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { insertLogs, queryAggregate, queryLogs } from "../services/logsService.js";
+import { insertLogs, queryAggregate, queryLogs } from "../services/logs/index.js";
 
 
 export async function createLogs(

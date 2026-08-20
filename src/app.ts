@@ -2,7 +2,7 @@ import express from "express";
 import session from "express-session";
 import healthRouter from "./routes/health.js";
 import logsRouter from "./routes/logs.js";
-import { flushRollup } from "./services/logsService.js";
+import { flushRollup } from "./services/logs/index.js";
 import alertsRouter from "./routes/alerts.js";
 import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";

@@ -3,7 +3,7 @@ import { pool } from "./db/index.js";
 import { migrate } from "./db/migrate.js";
 import { startRetentionJob } from "./services/retentionService.js";
 import { startAlertJob } from "./services/alertService.js";
-import { startRollupFlusher } from "./services/logsService.js";
+import { startRollupFlusher } from "./services/logs/index.js";
 
 const PORT = 8080;
 
