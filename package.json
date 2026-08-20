@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "build": "tsc --noEmit",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test",
     "demo": "node demo/record.mjs",
     "generate:swagger": "tsx scripts/generate-swagger.ts"
   },
