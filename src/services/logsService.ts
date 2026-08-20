@@ -168,6 +168,51 @@ export async function flushRollup(): Promise<void> {
     }
 }
 
+const BUCKET_INTERVAL_MS: Record<string, number> = {
+    "1m": MINUTE_MS,
+    "5m": 5 * MINUTE_MS,
+    "1h": 60 * MINUTE_MS,
+    "1d": 24 * 60 * MINUTE_MS,
+};
+
+// The rollup-backed path in queryAggregate only sees counts already flushed to
+// logs_rollup_1m — deltas still sitting in pendingRollup (up to one flush cycle old) are
+// invisible to it, which is exactly the write-to-visible gap read-after-write checks race
+// against. This merges those pending deltas straight into the DB-fetched bucket map, keyed
+// the same way as the SQL result, so a request landing between flushes still sees them.
+// Bucket alignment (bucketMs - bucketMs % bucketIntervalMs) matches Postgres's time_bucket
+// for these fixed intervals because pendingRollup keys are already minute-aligned and every
+// supported interval (1m/5m/1h/1d) is a clean multiple of a minute aligned to the UTC epoch.
+function mergePendingRollupIntoBuckets(
+    bucketRows: Map<string, { start: string; group: string | null; count: number }>,
+    sinceMs: number,
+    untilMs: number,
+    bucketIntervalMs: number,
+    groupColumn: "service" | "level" | null,
+    serviceFilter?: string,
+    levelFilter?: string
+): void {
+    for (const [bucketMs, byService] of pendingRollup) {
+        if (bucketMs < sinceMs || bucketMs >= untilMs) continue;
+        for (const [service, byLevel] of byService) {
+            if (serviceFilter && service !== serviceFilter) continue;
+            for (const [level, count] of byLevel) {
+                if (levelFilter && level !== levelFilter) continue;
+                const alignedMs = bucketMs - (bucketMs % bucketIntervalMs);
+                const start = new Date(alignedMs).toISOString();
+                const group = groupColumn === "service" ? service : groupColumn === "level" ? level : null;
+                const key = `${start}|${group}`;
+                const existing = bucketRows.get(key);
+                if (existing) {
+                    existing.count += count;
+                } else {
+                    bucketRows.set(key, { start, group, count });
+                }
+            }
+        }
+    }
+}
+
 export function startRollupFlusher(intervalMs: number = 1000): NodeJS.Timeout {
     // setInterval doesn't wait for the callback to finish, so under load — where a flush can
     // take longer than intervalMs because rollupPool (2 connections) is contended — ticks
@@ -451,11 +496,31 @@ export async function queryAggregate(query: any) {
 
     const result = await queryPool.query(sql, values);
 
-    const buckets = result.rows.map((row) => ({
-        start: row.bucket,
-        group: row.group_value,
-        count: parseInt(row.count, 10),
-    }));
+    const bucketRows = new Map<string, { start: string; group: string | null; count: number }>();
+    for (const row of result.rows) {
+        const start = new Date(row.bucket).toISOString();
+        bucketRows.set(`${start}|${row.group_value}`, {
+            start,
+            group: row.group_value,
+            count: parseInt(row.count, 10),
+        });
+    }
+
+    if (useRollup) {
+        mergePendingRollupIntoBuckets(
+            bucketRows,
+            sinceDate.getTime(),
+            untilDate.getTime(),
+            BUCKET_INTERVAL_MS[bucket]!,
+            groupColumn,
+            service,
+            level
+        );
+    }
+
+    const buckets = Array.from(bucketRows.values()).sort(
+        (a, b) => Date.parse(a.start) - Date.parse(b.start)
+    );
 
     return { buckets };
 }
