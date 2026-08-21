@@ -1,6 +1,6 @@
 import { queryPool } from "../../db/index.js";
 import { VALID_LEVELS } from "./validation.js";
-import { BUCKET_INTERVAL_MS, mergePendingRollupIntoBuckets } from "./rollup.js";
+import { BUCKET_INTERVAL_MS, MINUTE_MS, mergePendingRollupIntoBuckets } from "./rollup.js";
 
 export async function queryAggregate(query: any) {
     const { service, level, since, until, q, bucket, group_by } = query;
@@ -69,6 +69,17 @@ export async function queryAggregate(query: any) {
     let sql: string;
 
     if (useRollup) {
+        // logs_rollup_1m stores one row per whole minute. `since` almost never lands exactly on
+        // a minute boundary (a "last N seconds" read-after-write check certainly won't), so
+        // filtering bucket_start >= since would silently drop the entire straddled minute —
+        // including the portion of it that's genuinely inside [since, until) — instead of just
+        // trimming to the requested range. That's an under-count of up to a full minute of the
+        // most recently ingested data on nearly every query. Flooring the filter to the minute
+        // includes that row; the cost is the first returned bucket may also count a sliver of
+        // data from just before the true `since`, which is a far smaller error than dropping a
+        // whole minute of legitimately in-range data.
+        values[0] = new Date(sinceDate.getTime() - (sinceDate.getTime() % MINUTE_MS)).toISOString();
+
         const whereClause = conditions.join(" AND ");
         const groupByClause = groupColumn ? `GROUP BY bucket, ${groupColumn}` : `GROUP BY bucket`;
         sql = `
@@ -126,9 +137,13 @@ export async function queryAggregate(query: any) {
     }
 
     if (useRollup) {
+        // Same straddled-minute fix as the SQL filter above — pendingRollup keys are minute-
+        // aligned, so comparing against the raw (unfloored) since would drop the current
+        // in-flight minute's not-yet-flushed deltas too.
+        const sinceMsFlooredToMinute = sinceDate.getTime() - (sinceDate.getTime() % MINUTE_MS);
         mergePendingRollupIntoBuckets(
             bucketRows,
-            sinceDate.getTime(),
+            sinceMsFlooredToMinute,
             untilDate.getTime(),
             BUCKET_INTERVAL_MS[bucket]!,
             groupColumn,
