@@ -1,5 +1,5 @@
 import type { Request, Response } from "express";
-import { insertLogs, queryAggregate, queryLogs } from "../services/logs/index.js";
+import { insertLogs, queryAggregate, queryLogs, IngestOverloadedError } from "../services/logs/index.js";
 
 
 export async function createLogs(
@@ -19,6 +19,12 @@ export async function createLogs(
             .json(result);
 
     } catch (error) {
+
+        if (error instanceof IngestOverloadedError) {
+            return res.status(503)
+                .set("Retry-After", "1")
+                .json({ error: "server is overloaded, retry shortly" });
+        }
 
         res.status(500).json({
             error: "internal server error"

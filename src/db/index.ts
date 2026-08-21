@@ -13,7 +13,8 @@ const connectionConfig = {
 // a query has to queue behind whatever batch of concurrent inserts is already holding
 // every connection. A separate small pool lets a query grab a connection immediately
 // instead of waiting in that line, even while ingestion saturates the write pool.
-export const pool = new Pool({ ...connectionConfig, max: 10 });
+export const POOL_MAX = 10;
+export const pool = new Pool({ ...connectionConfig, max: POOL_MAX });
 
 // queryPool only has 4 connections. Without a cap, one slow query (e.g. the unindexed
 // q=/attr.* raw-scan fallback in queryAggregate, scanning a large table) can hold a
