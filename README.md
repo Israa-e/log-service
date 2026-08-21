@@ -142,12 +142,14 @@ A second table, `logs_rollup_1m (bucket_start, service, level, count)`, is a pre
 
 | Index | Purpose |
 |---|---|
-| `idx_logs_service (service, timestamp DESC)` | Service filters |
+| `idx_logs_service_ts_id (service, timestamp DESC, id DESC)` | Service filters + cursor pagination (`(timestamp, id) < (cursor)`) with no extra sort |
 | `idx_logs_level (level, timestamp DESC)` | Level filters |
 | `idx_logs_timestamp_id_desc (timestamp DESC, id DESC)` | Default sort + cursor pagination (`(timestamp, id) < (cursor)`) |
 | `logs_pkey (id, timestamp)` | Primary key |
 
 That's deliberately the whole list — every index here is a plain btree, and there's exactly one non-pkey index per query dimension. Two write-heavy indexes were removed after measurement (see Performance): a GIN `jsonb_path_ops` index on `attributes`, and a GIN trigram index on `message` for `q=` search. On this project's 1 M-row test dataset those two indexes alone accounted for **664 MB — more than the 352 MB of actual row data** — and GIN maintenance is charged synchronously on every insert. With Postgres capped at 1 CPU and a 15k+ logs/sec target, that write cost was the dominant bottleneck: dropping them roughly doubled sustained ingest throughput on its own.
+
+`idx_logs_service` (2-column) was replaced with the 3-column version above: with only `(service, timestamp DESC)`, a `service=X` query still needs an extra Incremental Sort to break ties on `id` for rows sharing a timestamp, since `id` isn't in the index. Measured ~30% slower per 1000-row page than the 3-column index, which resolves the whole ORDER BY (and the cursor's `(timestamp, id) < (...)` tie-break) as a single index scan. This matters specifically for `GET /logs?service=X&...`, cursor-paginated at up to 1000 rows/page — the load generator's read-after-write check pages through exactly this shape, once per service, inside a fixed time budget, so per-page latency directly bounds how much of the accepted data it can see in time.
 
 The trade-off: `attr.<key>` and `q=` (message `ILIKE`) filters are now unindexed. They're evaluated as a filter over whatever range `since`/`until` bounds via TimescaleDB chunk exclusion — fine for the correctness checks and for filtered browsing in the dashboard, but a query combining `attr.*`/`q` with no time range (or a very wide one) does a full scan. Given the resource envelope, that's the right place to spend (or rather, not spend) CPU: sustained ingest throughput is worth far more than making a rarely-hit filter combination fast.
 
