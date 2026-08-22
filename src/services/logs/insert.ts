@@ -71,11 +71,17 @@ export async function insertLogs(logs: LogEntry[]): Promise<InsertResult> {
         const attributes = validRows.map((r) => r[4]);
 
         const insertStartedAt = Date.now();
-        await pool.query(
-            `INSERT INTO logs (timestamp, level, service, message, attributes)
+        await pool.query({
+            // A named statement is parsed/planned once per physical connection and reused
+            // on every later call with that name on that connection — this query's shape
+            // never changes, so naming it turns every insert after a connection's first
+            // into a bind-and-execute, skipping parse/plan CPU on the single-core Postgres
+            // container for the hottest query in the service.
+            name: "insert_logs",
+            text: `INSERT INTO logs (timestamp, level, service, message, attributes)
              SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::text[], $5::jsonb[])`,
-            [timestamps, levels, services, messages, attributes]
-        );
+            values: [timestamps, levels, services, messages, attributes],
+        });
         const insertElapsedMs = Date.now() - insertStartedAt;
         insertLatencyEwmaMs = insertLatencyEwmaMs === 0
             ? insertElapsedMs

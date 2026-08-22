@@ -48,11 +48,15 @@ export async function flushRollup(): Promise<void> {
     }
 
     try {
-        await rollupPool.query(
-            `INSERT INTO logs_rollup_1m (bucket_start, service, level, count)
+        // Named for the same reason as insert_logs in insert.ts: this query's shape is
+        // fixed, so naming it lets `pg` skip parse/plan on every flush after a rollupPool
+        // connection's first.
+        await rollupPool.query({
+            name: "flush_rollup",
+            text: `INSERT INTO logs_rollup_1m (bucket_start, service, level, count)
              SELECT * FROM unnest($1::timestamptz[], $2::text[], $3::text[], $4::bigint[])`,
-            [buckets, services, levels, counts]
-        );
+            values: [buckets, services, levels, counts],
+        });
     } catch (err) {
         console.error("Rollup flush failed, re-queuing for retry:", err);
         // The snapshot was already swapped out of pendingRollup before this query ran, so on
