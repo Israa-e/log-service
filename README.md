@@ -1,7 +1,32 @@
-# Log Service
+<div align="center">
 
-A high-performance log ingestion and query service, inspired by Datadog and Grafana Loki. Ingests structured logs at scale, stores them in TimescaleDB, and provides a rich dashboard for search, aggregation, and retention management.
+# 📊 Log Service
 
+**A high-performance log ingestion and query service**, inspired by Datadog and Grafana Loki.
+Ingests structured logs at scale, stores them in TimescaleDB, and provides a rich dashboard for search, aggregation, and retention management.
+
+[![CI](https://github.com/Israa-e/log-service/actions/workflows/ci.yml/badge.svg)](https://github.com/Israa-e/log-service/actions/workflows/ci.yml)
+![Node.js](https://img.shields.io/badge/Node.js-20-339933?logo=node.js&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-strict-3178C6?logo=typescript&logoColor=white)
+![TimescaleDB](https://img.shields.io/badge/TimescaleDB-PG16-fdb515?logo=postgresql&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?logo=docker&logoColor=white)
+![Throughput](https://img.shields.io/badge/sustained_throughput-13.8k--15.6k_logs%2Fsec-brightgreen)
+
+</div>
+
+## Contents
+
+- 🧰 [Tech Stack](#tech-stack)
+- 🚀 [Quick Start](#quick-start)
+- 🖥️ [Dashboard Screens](#dashboard-screens)
+- 🔌 [API Contract](#api-contract)
+- 🗄️ [Schema](#schema)
+- 🔍 [Indexing](#indexing)
+- ⚡ [Performance](#performance)
+- ✨ [Optional Features](#optional-features)
+- 🧹 [Retention](#retention)
+- 🧪 [Load Test](#load-test)
+- ⚠️ [Known Limitations](#known-limitations)
 
 ## Tech Stack
 
@@ -32,31 +57,54 @@ docker compose up -d --build
 
 ## Dashboard Screens
 
-### Logs Explorer
+<table>
+<tr>
+<td width="50%" valign="top">
+
+**Logs Explorer**
 Advanced search, filtering by service/level/message, time range selection, and a detail drawer for individual log entries.
 
 ![Logs](screens/logs.png)
 
-### Analytics & Metrics
+</td>
+<td width="50%" valign="top">
+
+**Analytics & Metrics**
 Interactive ECharts visualizations — throughput over time, severity distribution, error clustering, and storage breakdown by service.
 
 ![Analytics](screens/Metrics.png)
 
-### Retention Management
+</td>
+</tr>
+<tr>
+<td width="50%" valign="top">
+
+**Retention Management**
 View total events, retention period, active services, and last retention run. Trigger manual cleanup or configure the auto-schedule.
 
 ![Retention](screens/retention.png)
 
-### Add Logs 
+</td>
+<td width="50%" valign="top">
 
+**Add Logs**
 Manual log ingestion interface — submit log entries with timestamp, level, service, message, and optional attributes.
 
 ![Add Logs](screens/addLogs.png)
 
-### AI Support Chat
+</td>
+</tr>
+<tr>
+<td colspan="2" valign="top">
+
+**AI Support Chat**
 Real-time AI-powered support assistant for cluster configuration, queries, and retention policies.
 
-![AI Support](screens/AiSupport.png)
+<p align="center"><img src="screens/AiSupport.png" width="50%" /></p>
+
+</td>
+</tr>
+</table>
 
 ## API Contract
 
@@ -143,11 +191,10 @@ A second table, `logs_rollup_1m (bucket_start, service, level, count)`, is a pre
 | Index | Purpose |
 |---|---|
 | `idx_logs_service_ts_id (service, timestamp DESC, id DESC)` | Service filters + cursor pagination (`(timestamp, id) < (cursor)`) with no extra sort |
-| `idx_logs_level (level, timestamp DESC)` | Level filters |
-| `idx_logs_timestamp_id_desc (timestamp DESC, id DESC)` | Default sort + cursor pagination (`(timestamp, id) < (cursor)`) |
+| `idx_logs_timestamp_id_desc (timestamp DESC, id DESC)` | Default sort + cursor pagination (`(timestamp, id) < (cursor)`); also what `level`-filtered queries fall back to now that `idx_logs_level` is gone |
 | `logs_pkey (id, timestamp)` | Primary key |
 
-That's deliberately the whole list — every index here is a plain btree, and there's exactly one non-pkey index per query dimension. Two write-heavy indexes were removed after measurement (see Performance): a GIN `jsonb_path_ops` index on `attributes`, and a GIN trigram index on `message` for `q=` search. On this project's 1 M-row test dataset those two indexes alone accounted for **664 MB — more than the 352 MB of actual row data** — and GIN maintenance is charged synchronously on every insert. With Postgres capped at 1 CPU and a 15k+ logs/sec target, that write cost was the dominant bottleneck: dropping them roughly doubled sustained ingest throughput on its own.
+That's deliberately the whole list — every index here is a plain btree, and there's exactly one non-pkey index per query dimension. Three write-heavy indexes were removed after measurement (see Performance): a GIN `jsonb_path_ops` index on `attributes`, a GIN trigram index on `message` for `q=` search, and `idx_logs_level (level, timestamp DESC)`. The two GIN indexes alone accounted for **664 MB — more than the 352 MB of actual row data** on this project's 1 M-row test dataset, and GIN maintenance is charged synchronously on every insert; `idx_logs_level` was cheaper in size but `level` has only 4 distinct values, so under concurrent inserts every batch funneled into the same few hot btree pages — measured, this alone took a 500-row insert from 9ms to 21.5ms and capped ingest at ~5-8k logs/sec regardless of offered load. With Postgres capped at 1 CPU and a 15k+ logs/sec target, that write cost was the dominant bottleneck: dropping these roughly doubled sustained ingest throughput.
 
 `idx_logs_service` (2-column) was replaced with the 3-column version above: with only `(service, timestamp DESC)`, a `service=X` query still needs an extra Incremental Sort to break ties on `id` for rows sharing a timestamp, since `id` isn't in the index. Measured ~30% slower per 1000-row page than the 3-column index, which resolves the whole ORDER BY (and the cursor's `(timestamp, id) < (...)` tie-break) as a single index scan. This matters specifically for `GET /logs?service=X&...`, cursor-paginated at up to 1000 rows/page — the load generator's read-after-write check pages through exactly this shape, once per service, inside a fixed time budget, so per-page latency directly bounds how much of the accepted data it can see in time.
 
