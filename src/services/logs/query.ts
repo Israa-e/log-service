@@ -2,7 +2,18 @@ import { queryPool } from "../../db/index.js";
 import { VALID_LEVELS } from "./validation.js";
 import { decodeCursor } from "./cursor.js";
 
-export async function queryLogs(query: any) {
+type QueryOptions = {
+  service?: string;
+  level?: string;
+  since?: string;
+  until?: string;
+  q?: string;
+  attributes?: Record<string, string>;
+  limit?: number;
+  cursor?: string;
+};
+
+export async function queryLogs(query: QueryOptions) {
     const { service, level, since, until, q, cursor } = query;
 
     if (level) {
@@ -71,11 +82,11 @@ export async function queryLogs(query: any) {
         paramIndex++;
     }
 
-    for (const key in query) {
+    for (const [key, value] of Object.entries(query)) {
         if (key.startsWith("attr.")) {
             const attrKey = key.slice(5);
             conditions.push(`attributes @> $${paramIndex}::jsonb`);
-            values.push(JSON.stringify({ [attrKey]: String(query[key]) }));
+            values.push(JSON.stringify({ [attrKey]: String(value) }));
             paramIndex += 1;
         }
     }

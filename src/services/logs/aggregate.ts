@@ -1,8 +1,18 @@
 import { queryPool } from "../../db/index.js";
 import { VALID_LEVELS } from "./validation.js";
 import { BUCKET_INTERVAL_MS, MINUTE_MS, mergePendingRollupIntoBuckets } from "./rollup.js";
+type AggregateOptions = {
+  service?: string;
+  level?: string;
+  since?: string;
+  until?: string;
+  q?: string;
+  bucket?: "1m" | "5m" | "1h" | "1d";
+  group_by?: string;
+  [key: string]: any;
+};
 
-export async function queryAggregate(query: any) {
+export async function queryAggregate(query: AggregateOptions) {
     const { service, level, since, until, q, bucket, group_by } = query;
 
     if (!since || !until) {
