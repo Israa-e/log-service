@@ -66,7 +66,7 @@ export async function getSupportReply(message: string): Promise<string> {
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://github.com/anomalyco/log-service",
+        "HTTP-Referer": "https://github.com/Israa-e/log-service",
         "X-Title": "Log Service",
       },
       body: JSON.stringify({

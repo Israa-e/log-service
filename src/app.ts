@@ -11,8 +11,6 @@ import { checkAuth } from "./controllers/authController.js";
 import { setupSwagger } from "./swagger.js";
 
 import path from "path";
-import { fileURLToPath } from "url";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 app.use(express.json({ limit: "20mb" }));
 
@@ -43,6 +41,7 @@ app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
 app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
 app.use(express.static(PUBLIC));
 setupSwagger(app);
+
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
 app.use("/alerts", alertsRouter);
