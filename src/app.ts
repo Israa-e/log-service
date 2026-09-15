@@ -7,7 +7,7 @@ import alertsRouter from "./routes/alerts.js";
 import notificationsRouter from "./routes/notifications.js";
 import authRouter from "./routes/auth.js";
 import supportRouter from "./routes/support.js";
-import { checkAuth } from "./controllers/authController.js";
+import { checkAuth, requireAuth } from "./controllers/authController.js";
 import { setupSwagger } from "./swagger.js";
 
 import path from "path";
@@ -38,16 +38,16 @@ app.get("/retention", sessionMiddleware, checkAuth, authPage("retention.html"));
 app.get("/history", sessionMiddleware, checkAuth, authPage("retention.html"));
 app.get("/users", sessionMiddleware, checkAuth, authPage("users.html"));
 app.get("/docs", (req, res) => res.sendFile(path.join(PUBLIC, "docs.html")));
-app.get("/support", (req, res) => res.sendFile(path.join(PUBLIC, "support.html")));
+app.get("/support", sessionMiddleware, checkAuth, authPage("support.html"));
 app.use(express.static(PUBLIC));
 setupSwagger(app);
 
 app.use("/health", healthRouter);
 app.use("/logs", logsRouter);
-app.use("/alerts", alertsRouter);
+app.use("/alerts", sessionMiddleware, requireAuth, alertsRouter);
 app.use("/auth", sessionMiddleware, authRouter);
-app.use("/notifications", notificationsRouter);
-app.use("/support", supportRouter);
+app.use("/notifications", sessionMiddleware, requireAuth, notificationsRouter);
+app.use("/support", sessionMiddleware, requireAuth, supportRouter);
 
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
   if (err.type === "entity.parse.failed" || err instanceof SyntaxError) {

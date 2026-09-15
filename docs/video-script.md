@@ -77,8 +77,9 @@ app.get('/logs/aggregate', ...)
 > **Client → Express → Validation → Service / Query Builder → PostgreSQL → Response.**
 >
 > وبالإضافة لذلك، عندي dashboard ويب مدمج يقدّم صفحات مثل logs explorer، analytics، ingestion,
-> retention، users، docs، و support. هذه الصفحات محمية بـ session auth، بينما الـ API endpoints
-> الأساسية تبقى مفتوحة حسب contract المطلوب.
+> retention، users، و support. هذه الصفحات محمية بـ session auth (الـ API endpoints تحت كل
+> واحدة منها — /alerts، /notifications، /support — محمية بنفس الطريقة)، بينما /docs (Swagger)
+> والـ API endpoints الأساسية (health/logs/aggregate) تبقى مفتوحة حسب contract المطلوب.
 >
 > وعندي كمان background job مسؤول عن retention وحذف الـ old logs، بالإضافة إلى alert job
 > و modules إضافية مثل notifications و AI support chat.
@@ -455,8 +456,9 @@ docker stats
 > notifications and AI support chat.
 >
 > On top of the API, I also serve a dashboard with pages such as logs explorer, analytics,
-> ingestion, retention, users, docs, and support. The dashboard uses session-based auth,
-> while the core API endpoints remain unauthenticated as required.
+> ingestion, retention, users, and support. The dashboard uses session-based auth, and the
+> API routes behind each page (/alerts, /notifications, /support) require a session too,
+> while /docs (Swagger) and the core API endpoints remain unauthenticated as required.
 >
 > So the overall flow is:
 > **Client → Express → validation → service/query builder → PostgreSQL/TimescaleDB → response.**
@@ -615,10 +617,11 @@ hour), `bucket=5m`, `group_by=service` → **Execute**.
 
 ### Dashboard + Auth (quick mention)
 > I also built a browser-based dashboard with pages such as logs explorer, analytics,
-> ingestion, retention, users, docs, and support. The dashboard uses session-based auth,
-> while the core API endpoints remain unauthenticated as required. Good moment to point at
+> ingestion, retention, users, and support. The dashboard uses session-based auth, and so do
+> the API routes behind each page — /alerts, /notifications, /support — while /docs (Swagger)
+> and the core API endpoints remain unauthenticated as required. Good moment to point at
 > the lock icon on protected endpoints like `GET /auth/users` — that's the `cookieAuth`
-> security scheme, which only guards the HTML pages.
+> security scheme, which guards both the HTML pages and their backing routes.
 
 ### Alerts / Notifications / Support (optional)
 > Expand the remaining sections to show the other modules are also documented: `POST /alerts`

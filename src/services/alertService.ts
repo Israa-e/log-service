@@ -1,5 +1,6 @@
 import { pool } from "../db/index.js";
 import { createNotification } from "./notificationService.js";
+import { isSafeWebhookUrl } from "./urlSafety.js";
 export async function checkAlerts() {
       const rules = await pool.query(`SELECT * FROM alert_rules`);
 
@@ -27,9 +28,15 @@ export async function checkAlerts() {
         if (minutesSinceLastTrigger < 10) continue;
       }
 
+      if (!(await isSafeWebhookUrl(rule.webhook_url))) {
+        console.error(`Skipping alert rule ${rule.id}: webhook_url no longer resolves to a safe address`);
+        continue;
+      }
+
       try {
         await fetch(rule.webhook_url, {
           method: "POST",
+          redirect: "manual",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             alert: "error_threshold_exceeded",
@@ -70,6 +77,9 @@ export async function createAlertRule(rule: {
 }) {
   if (!rule.threshold || !rule.window_minutes || !rule.webhook_url) {
     throw new Error("threshold, window_minutes, and webhook_url are required");
+  }
+  if (!(await isSafeWebhookUrl(rule.webhook_url))) {
+    throw new Error("webhook_url must be a public http(s) address");
   }
 
   const result = await pool.query(
